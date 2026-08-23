@@ -1,9 +1,11 @@
+/** 山門手札：以無框透明分層讓少俠自然融入山門、演武台與換裝抽屜，不建立人物圖片卡。 */
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { avatarLayersFor, avatarRarityEffect, avatarRarityForEquipmentChange, defaultAvatarEquipment, type AvatarEquipment } from "@/lib/avatar-system";
+import { avatarLayersFor, avatarRarityEffect, avatarRarityForEquipmentChange, defaultAvatarEquipment, type AvatarEquipment, type AvatarLayerSlot } from "@/lib/avatar-system";
 
 type CharacterAvatarProps = { equipment?: AvatarEquipment; height?: number; style?: StyleProp<ViewStyle>; accessibilityLabel?: string; animateChanges?: boolean };
+const layerDepth: Record<AvatarLayerSlot, number> = { aura_effect: 0, back_accessory: 1, base_body: 2, hair: 3, outfit: 4, weapon_back: 5, weapon_front: 6, head_accessory: 7 };
 
 /** 以固定 3:4 畫布和絕對定位堆疊所有透明圖層，供首頁、角色頁與試穿面板共用。 */
 export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 240, style, accessibilityLabel = "目前角色外觀", animateChanges = true }: CharacterAvatarProps) {
@@ -40,7 +42,7 @@ export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 2
   const flashScale = qiFlash.interpolate({ inputRange: [0, 1], outputRange: [effect.flashStart, effect.flashEnd] });
   const flashOpacity = qiFlash.interpolate({ inputRange: [0, 1], outputRange: [0, effect.flashPeakOpacity] });
   const ringOpacity = qiFlash.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, effect.flashPeakOpacity, 0] });
-  return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}><Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} /><Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />{layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={{ uri: layer.assetUrl }} resizeMode="contain" style={[styles.layer, { opacity: transition, transform: [{ scale: avatarScale }] }]} />)}</View>;
+  return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}><Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} /><Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />{layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={{ uri: layer.assetUrl }} resizeMode="contain" style={[styles.layer, { zIndex: layerDepth[layer.slot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}</View>;
 }
 
 const styles = StyleSheet.create({

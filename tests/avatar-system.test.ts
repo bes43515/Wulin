@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { avatarItems, avatarLayersFor, avatarRarityForEquipmentChange, defaultAvatarEquipment, profileFromEquipment } from "../lib/avatar-system";
+import { avatarItemById, avatarItems, avatarLayersFor, avatarRarityForEquipmentChange, defaultAvatarEquipment, profileFromEquipment } from "../lib/avatar-system";
 
 describe("avatar-system", () => {
   it("renders the base body before hair, outfit and front weapon layers", () => {
@@ -23,6 +23,16 @@ describe("avatar-system", () => {
   it("includes the requested initial wardrobe categories", () => {
     const names = avatarItems.map((item) => item.name);
     expect(names).toEqual(expect.arrayContaining(["門派弟子袍", "青雲俠客服", "赤焰披風袍", "木劍", "鐵劍", "雲紋長劍", "龍淵古劍", "金絲斗笠", "赤焰披風", "金色宗師光環"]));
+  });
+
+  it("uses dedicated assets for every completed legendary wardrobe layer", () => {
+    const goldHat = avatarItemById("avatar-head-hat-gold");
+    const redCape = avatarItemById("avatar-back-cape-redflame");
+    const masterAura = avatarItemById("avatar-aura-goldmaster");
+    expect(goldHat?.asset_url).toMatch(/avatar-head-hat-gold/);
+    expect(redCape?.asset_url).toMatch(/avatar-back-cape-redflame/);
+    expect(masterAura?.asset_url).toMatch(/avatar-aura-goldmaster/);
+    expect(new Set([goldHat?.asset_url, redCape?.asset_url, masterAura?.asset_url]).size).toBe(3);
   });
 
   it("uses the highest rarity of changed equipment for both equipping and unequipping effects", () => {

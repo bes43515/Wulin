@@ -1,111 +1,217 @@
+/** 山門手札：角色是主角；朱砂印記與宣紙題籤只用來支援清楚的試穿與裝備決策。 */
 import React from "react";
-import { Animated, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 
 import { CharacterAvatar } from "@/components/character-avatar";
-import { ScreenContainer } from "@/components/screen-container";
 import { JianghuPageAtmosphere, JianghuPaperPanel } from "@/components/jianghu-ui";
-import { achievementArt, achievementDefinitions, achievementProgress, isAchievementUnlocked, levelTitle, tierColor, tierLabel, typeLabel, useGame, type TaskType } from "@/lib/game-store";
-import { achievementBanner, customHeroBanner } from "@/lib/custom-assets";
-import { avatarItemById, avatarItems, avatarRarityColor, avatarRarityEffect, avatarRarityLabel, avatarSlotLabel, defaultAvatarEquipment, type AvatarEquipment, type AvatarSlot } from "@/lib/avatar-system";
+import { ScreenContainer } from "@/components/screen-container";
+import { customHeroBanner } from "@/lib/custom-assets";
+import { levelTitle, typeLabel, useGame, type TaskType } from "@/lib/game-store";
+import { avatarBrandMark, avatarItemById, avatarItems, avatarRarityColor, avatarRarityLabel, avatarSlotLabel, defaultAvatarEquipment, type AvatarEquipment, type AvatarSlot } from "@/lib/avatar-system";
 
-const attrs: { key: TaskType; label: string; color: string }[] = [
-  { key: "inner", label: "內力", color: "#8B78D8" },
-  { key: "body", label: "筋骨", color: "#E86D67" },
-  { key: "wisdom", label: "悟性", color: "#D99632" },
-  { key: "reputation", label: "聲望", color: "#2E8B91" },
-];
 const wardrobeSlots: AvatarSlot[] = ["outfit", "weapon", "head_accessory", "back_accessory", "aura"];
-
-function MiniProgress({ progress, color, tiers }: { progress: number; color: string; tiers: (typeof achievementDefinitions)[number]["tiers"] }) {
-  const target = tiers[tiers.length - 1]?.target ?? 1;
-  const percent = Math.min((progress / target) * 100, 100);
-  const animated = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => { Animated.timing(animated, { toValue: percent, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [animated, percent]);
-  return <View style={styles.miniProgressWrap}><View style={styles.miniTrack}><Animated.View style={[styles.miniFill, { width: animated.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }), backgroundColor: color }]} />{tiers.map((tier) => <View key={tier.tier} style={[styles.miniMilestone, { left: `${(tier.target / target) * 100}%` }]}><View style={[styles.miniDot, { borderColor: color, backgroundColor: progress >= tier.target ? color : "#FFFFFF" }]} /></View>)}</View><View style={styles.miniLabels}>{tiers.map((tier) => <Text key={tier.tier} style={[styles.miniLabel, { color: progress >= tier.target ? color : "#9CB1AE" }]}>{tierLabel[tier.tier]}</Text>)}</View></View>;
-}
-
-function TierProgress({ progress, color, tiers }: { progress: number; color: string; tiers: (typeof achievementDefinitions)[number]["tiers"] }) {
-  const animated = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => { Animated.timing(animated, { toValue: Math.min(Math.max(progress, 0), 1), duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start(); }, [animated, progress]);
-  const target = tiers[tiers.length - 1]?.target ?? 1;
-  return <View style={styles.tierProgressWrap}><View style={styles.tierTrack}><Animated.View style={[styles.tierFill, { width: animated.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }), backgroundColor: color }]} /></View><View style={styles.tierMarkers}>{tiers.map((tier) => <View key={tier.tier} style={[styles.tierMarker, { left: `${(tier.target / target) * 100}%` }]}><View style={[styles.tierMarkerDot, { backgroundColor: color }]} /><Text style={[styles.tierMarkerLabel, { color }]}>{tierLabel[tier.tier]}</Text></View>)}</View></View>;
-}
+const summarySlots: AvatarSlot[] = ["outfit", "weapon", "head_accessory", "back_accessory", "aura"];
+const attributes: { key: TaskType; label: string; color: string }[] = [
+  { key: "inner", label: "內力", color: "#7564B4" },
+  { key: "body", label: "筋骨", color: "#B64732" },
+  { key: "wisdom", label: "悟性", color: "#B27A2D" },
+  { key: "reputation", label: "聲望", color: "#2E7C78" },
+];
 
 export default function ProfileScreen() {
   const game = useGame();
-  const [selected, setSelected] = React.useState<(typeof achievementDefinitions)[number] | null>(null);
   const [wardrobeVisible, setWardrobeVisible] = React.useState(false);
-  const unlockedCount = achievementDefinitions.filter((item) => (game.achievementLevels[item.key] ?? 0) > 0).length;
-  const equippedSummary = (["outfit", "weapon", "hair", "head_accessory", "back_accessory", "aura"] as AvatarSlot[]).map((slot) => ({ slot, item: avatarItemById(game.avatarEquipment[slot]) }));
+  const [wardrobeSlot, setWardrobeSlot] = React.useState<AvatarSlot>("outfit");
+  const equippedSummary = summarySlots.map((slot) => ({ slot, item: avatarItemById(game.avatarEquipment[slot]) }));
+  const openWardrobe = (slot: AvatarSlot) => { setWardrobeSlot(slot); setWardrobeVisible(true); };
 
-  return <ScreenContainer containerClassName="bg-[#F4F1E7]" className="px-5"><View style={profilePageStyles.page}><JianghuPageAtmosphere /><ScrollView style={profilePageStyles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-    <View style={styles.head}><View><Text style={styles.kicker}>角色與修煉</Text><Text style={styles.heading}>{game.nickname}</Text></View><Pressable onPress={() => router.push("/settings")} style={({ pressed }) => [styles.settings, pressed && styles.pressed]}><Text style={styles.settingsText}>設定</Text></Pressable></View>
-    <View style={[styles.profileBanner, unifiedBannerStyles.profileBanner]}><Image source={customHeroBanner} style={unifiedBannerStyles.background} resizeMode="cover" /><View style={[styles.sceneShade, unifiedBannerStyles.textShade]} /><CharacterAvatar equipment={game.avatarEquipment} height={241} style={unifiedBannerStyles.profileAvatar} accessibilityLabel="融入修煉場景的目前角色外觀" /><View style={[styles.profileCopy, unifiedBannerStyles.copy]}><Text style={styles.bannerKicker}>{game.sect} · 靜心修煉場</Text><Text style={styles.rank}>{levelTitle(game.level)}</Text><Text style={styles.level}>境界 Lv.{game.level}</Text><Text style={styles.bannerNote}>{game.titles.at(-1) ? `稱號「${game.titles.at(-1)}」` : "持之以恆，方能破境。"}</Text></View><View style={unifiedBannerStyles.profileBelt}><View><Text style={unifiedBannerStyles.beltValue}>Lv.{game.level}</Text><Text style={unifiedBannerStyles.beltLabel}>目前境界</Text></View><View style={unifiedBannerStyles.beltDivider} /><View><Text style={unifiedBannerStyles.beltValue}>{game.streak} 日</Text><Text style={unifiedBannerStyles.beltLabel}>連續修煉</Text></View></View></View>
-    <JianghuPaperPanel style={styles.equipmentPanel}><View style={styles.equipmentHead}><View><Text style={styles.equipmentKicker}>少俠外觀</Text><Text style={styles.equipmentTitle}>目前裝備</Text></View><Pressable onPress={() => setWardrobeVisible(true)} style={({ pressed }) => [styles.wardrobeButton, pressed && styles.pressed]}><Text style={styles.wardrobeButtonText}>更換外觀</Text></Pressable></View><View style={styles.equipmentGrid}>{equippedSummary.map(({ slot, item }) => <View key={slot} style={styles.equipmentCell}><Text style={styles.equipmentSlot}>{avatarSlotLabel[slot]}</Text><Text numberOfLines={1} style={styles.equipmentName}>{item?.name ?? "無"}</Text></View>)}</View></JianghuPaperPanel>
-    <Text style={styles.section}>四象屬性</Text>{attrs.map((attr) => <View key={attr.key} style={styles.attrRow}><View style={styles.attrHead}><Text style={styles.attrName}>{attr.label}</Text><Text style={styles.attrValue}>{game.attributes[attr.key]}</Text></View><View style={styles.attrTrack}><View style={[styles.attrFill, { width: `${Math.min(game.attributes[attr.key] * 3, 100)}%`, backgroundColor: attr.color }]} /></View></View>)}
-    <View style={[styles.achievementBanner, unifiedBannerStyles.achievementBanner]}><Image source={achievementBanner} style={unifiedBannerStyles.background} resizeMode="cover" /><View style={[styles.sceneShade, unifiedBannerStyles.textShade]} /><View style={[styles.achievementBannerCopy, unifiedBannerStyles.copy]}><Text style={styles.bannerKicker}>江湖功德名冊</Text><Text style={styles.achievementBannerTitle}>俠客成就牆</Text><Text style={styles.achievementBannerBody}>每一段修煉，都會在門派功德碑留下痕跡。</Text></View><View style={styles.achievementSeal}><Text style={styles.achievementSealValue}>{unlockedCount}</Text><Text style={styles.achievementSealLabel}>已升級</Text></View><View style={unifiedBannerStyles.achievementBelt}><Text style={unifiedBannerStyles.achievementBeltText}>共 {achievementDefinitions.length} 項功德</Text><Text style={unifiedBannerStyles.achievementBeltText}>已升級 {unlockedCount} 項</Text></View></View>
-    <View style={styles.sectionRow}><Text style={styles.section}>成就進度</Text><Text style={styles.meta}>共 {achievementDefinitions.length} 項</Text></View>
-    <View style={styles.achievementList}>{achievementDefinitions.map((achievement) => { const level = game.achievementLevels[achievement.key] ?? 0; const progress = achievementProgress(achievement.key, game); const next = achievement.tiers[level] ?? achievement.tiers.at(-1); const currentTier = level > 0 ? achievement.tiers[level - 1].tier : "bronze"; const unlocked = isAchievementUnlocked(achievement.key, game); return <Pressable key={achievement.key} onPress={() => setSelected(achievement)} accessibilityRole="button" accessibilityLabel={`查看${achievement.name}成就詳情`} style={({ pressed }) => [styles.achievementRow, unlocked && styles.achievementUnlocked, pressed && styles.pressed]}><View style={[styles.badge, { borderColor: tierColor[currentTier], backgroundColor: unlocked ? "#FFF5D8" : "#EFF5F2" }]}><Image source={{ uri: achievementArt[achievement.key] }} style={[styles.badgeArt, !unlocked && styles.badgeLocked]} resizeMode="contain" /></View><View style={styles.achievementCopy}><View style={styles.achievementTitleRow}><Text style={styles.achievementName}>{achievement.name}</Text><Text style={[styles.achievementTier, { color: tierColor[currentTier] }]}>{level ? tierLabel[currentTier] : "未解鎖"}</Text></View><Text style={styles.achievementDesc}>{achievement.description} · {progress}/{next?.target ?? 1}</Text><MiniProgress progress={progress} color={tierColor[currentTier]} tiers={achievement.tiers} /></View><Text style={styles.reward}>+{next?.rewardCoin ?? 0}</Text></Pressable>; })}</View>
-    <Text style={styles.section}>最近修煉</Text><View style={styles.historyList}>{game.history.length === 0 ? <Text style={styles.empty}>完成任務後，修煉紀錄會出現在這裡。</Text> : game.history.slice(0, 5).map((task) => <View style={styles.historyRow} key={task.id}><Text style={styles.historyMark}>✓</Text><View style={styles.historyCopy}><Text style={styles.historyTitle}>{task.title}</Text><Text style={styles.historySub}>{typeLabel[task.type]} · 已完成</Text></View><Text style={styles.historyReward}>+ EXP</Text></View>)}</View>
-  </ScrollView><AchievementModal achievement={selected} onClose={() => setSelected(null)} /><WardrobeModal visible={wardrobeVisible} onClose={() => setWardrobeVisible(false)} /></View></ScreenContainer>;
+  return (
+    <ScreenContainer containerClassName="bg-[#F4F1E7]" className="px-4">
+      <View style={styles.page}>
+        <JianghuPageAtmosphere />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <View style={styles.identityRow}>
+              <Image source={{ uri: avatarBrandMark }} style={styles.brandMark} resizeMode="contain" />
+              <View>
+                <Text style={styles.kicker}>江湖修煉手札</Text>
+                <Text style={styles.heading}>少俠衣櫥</Text>
+                <Text style={styles.nickname}>{game.nickname} · {levelTitle(game.level)}</Text>
+              </View>
+            </View>
+            <Pressable onPress={() => router.push("/settings")} style={({ pressed }) => [styles.settings, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="開啟設定">
+              <Text style={styles.settingsText}>設定</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.stage}>
+            <Image source={customHeroBanner} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            <View style={styles.stageShade} />
+            <View style={styles.stageMist} />
+            <CharacterAvatar equipment={game.avatarEquipment} height={338} style={styles.stageAvatar} accessibilityLabel="演武台上已裝備完整外觀的少俠模型" />
+            <View style={styles.stageCopy}>
+              <Text style={styles.stageKicker}>{game.sect} · 山門演武台</Text>
+              <Text style={styles.stageTitle}>{levelTitle(game.level)}</Text>
+              <Text style={styles.stageMeta}>境界 Lv.{game.level}　修為 {game.exp}</Text>
+              <Text style={styles.stageNote}>{game.titles.at(-1) ? `稱號「${game.titles.at(-1)}」` : "雲霧未散，少俠已立演武台。"}</Text>
+            </View>
+            <View style={styles.stageBelt}>
+              <View style={styles.beltItem}><Text style={styles.beltValue}>Lv.{game.level}</Text><Text style={styles.beltLabel}>目前境界</Text></View>
+              <View style={styles.beltDivider} />
+              <View style={styles.beltItem}><Text style={styles.beltValue}>{game.streak} 日</Text><Text style={styles.beltLabel}>連續修煉</Text></View>
+              <View style={styles.beltDivider} />
+              <View style={styles.beltItem}><Text style={styles.beltValue}>{game.coin}</Text><Text style={styles.beltLabel}>江湖幣</Text></View>
+            </View>
+          </View>
+
+          <JianghuPaperPanel style={styles.equipmentPanel}>
+            <View style={styles.panelHeader}>
+              <View><Text style={styles.panelKicker}>已裝備</Text><Text style={styles.panelTitle}>外觀題籤</Text></View>
+              <Pressable onPress={() => openWardrobe("outfit")} style={({ pressed }) => [styles.changeButton, pressed && styles.pressed]} accessibilityRole="button">
+                <Text style={styles.changeButtonText}>更換外觀</Text>
+              </Pressable>
+            </View>
+            <View style={styles.equipmentGrid}>
+              {equippedSummary.map(({ slot, item }) => (
+                <Pressable key={slot} onPress={() => openWardrobe(slot)} style={({ pressed }) => [styles.equipmentCell, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`前往${avatarSlotLabel[slot]}換裝`}>
+                  {item ? <Image source={{ uri: item.asset_url }} style={styles.equipmentThumb} resizeMode="contain" /> : <View style={styles.emptyThumb}><Text style={styles.emptyThumbText}>—</Text></View>}
+                  <View style={styles.equipmentCopy}>
+                    <Text style={styles.equipmentSlot}>{avatarSlotLabel[slot]}</Text>
+                    <Text style={styles.equipmentName} numberOfLines={1}>{item?.name ?? "未裝備"}</Text>
+                    <Text style={[styles.equipmentRarity, { color: item ? avatarRarityColor[item.rarity] : "#86938B" }]}>{item ? avatarRarityLabel[item.rarity] : "素裝"}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </JianghuPaperPanel>
+
+          <View style={styles.trainingHeader}><Text style={styles.trainingTitle}>今日修為</Text><Text style={styles.trainingHint}>功力隨每日試煉積累</Text></View>
+          <View style={styles.attributeStrip}>
+            {attributes.map((attribute) => (
+              <View key={attribute.key} style={styles.attributeItem}>
+                <View style={[styles.attributeSeal, { borderColor: attribute.color }]}><Text style={[styles.attributeSealText, { color: attribute.color }]}>{attribute.label.slice(0, 1)}</Text></View>
+                <Text style={styles.attributeName}>{attribute.label}</Text>
+                <Text style={[styles.attributeValue, { color: attribute.color }]}>{game.attributes[attribute.key]}</Text>
+                <View style={styles.attributeTrack}><View style={[styles.attributeFill, { width: `${Math.min(game.attributes[attribute.key] * 3, 100)}%`, backgroundColor: attribute.color }]} /></View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+        <WardrobeModal visible={wardrobeVisible} initialSlot={wardrobeSlot} onClose={() => setWardrobeVisible(false)} />
+      </View>
+    </ScreenContainer>
+  );
 }
 
-function WardrobeModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function WardrobeModal({ visible, initialSlot, onClose }: { visible: boolean; initialSlot: AvatarSlot; onClose: () => void }) {
   const game = useGame();
-  const [slot, setSlot] = React.useState<AvatarSlot>("outfit");
+  const [slot, setSlot] = React.useState<AvatarSlot>(initialSlot);
   const [preview, setPreview] = React.useState<AvatarEquipment>(game.avatarEquipment);
-  const [isApplying, setIsApplying] = React.useState(false);
-  const applyGlow = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => { if (visible) setPreview(game.avatarEquipment); }, [game.avatarEquipment, visible]);
-  const options = avatarItems.filter((item) => item.type === slot && game.userItems.some((owned) => owned.item_id === item.id && owned.owned));
+
+  React.useEffect(() => {
+    if (visible) {
+      setSlot(initialSlot);
+      setPreview(game.avatarEquipment);
+    }
+  }, [game.avatarEquipment, initialSlot, visible]);
+
+  const options = avatarItems.filter((item) => item.type === slot);
   const selectedItem = avatarItemById(preview[slot]);
-  const selectedEffect = avatarRarityEffect[selectedItem?.rarity ?? "common"];
-  const equipPreview = () => { if (isApplying) return; setIsApplying(true); applyGlow.setValue(0); Animated.sequence([Animated.timing(applyGlow, { toValue: 1, duration: selectedEffect.impactDuration, easing: Easing.out(Easing.cubic), useNativeDriver: true }), Animated.timing(applyGlow, { toValue: 0, duration: selectedEffect.settleDuration, easing: Easing.in(Easing.cubic), useNativeDriver: true })]).start(({ finished }) => { if (!finished) return; const selected = preview[slot]; if (selected) game.equipAvatarItem(selected); else game.unequipAvatarSlot(slot); setIsApplying(false); onClose(); }); };
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.wardrobeBackdrop}><JianghuPaperPanel style={styles.wardrobeSheet}><View style={styles.wardrobeHeader}><View><Text style={styles.wardrobeKicker}>江湖衣櫃</Text><Text style={styles.wardrobeTitle}>試穿與換裝</Text></View><Pressable onPress={onClose} style={styles.wardrobeClose}><Text style={styles.wardrobeCloseText}>×</Text></Pressable></View><View style={styles.wardrobePreview}><View style={styles.wardrobePreviewMist} /><CharacterAvatar equipment={preview} height={238} style={styles.wardrobeAvatar} accessibilityLabel="試穿中的角色模型" /><Animated.View pointerEvents="none" style={[styles.wardrobeApplyGlow, { backgroundColor: selectedEffect.glowColor, opacity: applyGlow.interpolate({ inputRange: [0, 1], outputRange: [0, selectedEffect.flashPeakOpacity] }), transform: [{ scale: applyGlow.interpolate({ inputRange: [0, 1], outputRange: [selectedEffect.flashStart, selectedEffect.flashEnd] }) }] }]} /><Animated.View pointerEvents="none" style={[styles.wardrobeApplySeal, { backgroundColor: selectedEffect.sealColor, borderColor: selectedEffect.ringColor, opacity: applyGlow, transform: [{ scale: applyGlow.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }] }]}><Text style={[styles.wardrobeApplySealText, { color: selectedEffect.sealTextColor }]}>{selectedEffect.sealLabel}</Text></Animated.View><View style={styles.previewCaption}><Text style={styles.previewCaptionKicker}>試穿外觀 · {avatarRarityLabel[selectedItem?.rarity ?? "common"]}</Text><Text style={styles.previewCaptionTitle}>{selectedItem?.name ?? "預設外觀"}</Text></View></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotTabs}>{wardrobeSlots.map((entry) => <Pressable key={entry} onPress={() => setSlot(entry)} style={({ pressed }) => [styles.slotTab, slot === entry && styles.slotTabActive, pressed && styles.pressed]}><Text style={[styles.slotTabText, slot === entry && styles.slotTabTextActive]}>{avatarSlotLabel[entry]}</Text></Pressable>)}</ScrollView><ScrollView style={styles.wardrobeOptions} contentContainerStyle={styles.wardrobeOptionsContent} showsVerticalScrollIndicator={false}>{options.length ? options.map((item) => { const selected = preview[slot] === item.id; const equipped = game.avatarEquipment[slot] === item.id; return <Pressable key={item.id} onPress={() => setPreview((current) => ({ ...current, [slot]: item.id }))} style={({ pressed }) => [styles.wardrobeOption, selected && styles.wardrobeOptionSelected, pressed && styles.pressed]}><View style={[styles.rarityMark, { backgroundColor: avatarRarityColor[item.rarity] }]}><Text style={styles.rarityMarkText}>{avatarRarityLabel[item.rarity].slice(0, 1)}</Text></View><View style={styles.wardrobeOptionCopy}><Text style={styles.wardrobeOptionName}>{item.name}</Text><Text style={styles.wardrobeOptionDesc}>{item.description}</Text></View><Text style={[styles.optionState, { color: selected ? avatarRarityColor[item.rarity] : "#8A9A92" }]}>{equipped ? "已裝備" : selected ? "試穿中" : "試穿"}</Text></Pressable>; }) : <Text style={styles.noWardrobeItem}>尚未擁有此類外觀；可在商鋪或成就獎勵取得。</Text>}</ScrollView><View style={styles.wardrobeActions}><Pressable disabled={isApplying} onPress={() => setPreview((current) => ({ ...current, [slot]: defaultAvatarEquipment[slot] }))} style={({ pressed }) => [styles.unequipButton, isApplying && styles.actionDisabled, pressed && !isApplying && styles.pressed]}><Text style={styles.unequipButtonText}>卸下</Text></Pressable><Pressable disabled={isApplying} onPress={equipPreview} style={({ pressed }) => [styles.equipButton, isApplying && styles.actionDisabled, pressed && !isApplying && styles.pressed]}><Text style={styles.equipButtonText}>{isApplying ? `${selectedEffect.sealLabel}顯現中…` : "裝備此試穿外觀"}</Text></Pressable></View></JianghuPaperPanel></View></Modal>;
+  const selectedOwned = !preview[slot] || game.userItems.some((entry) => entry.item_id === preview[slot] && entry.owned);
+  const equipPreview = () => {
+    if (!selectedOwned) {
+      Alert.alert("尚未擁有", "這件外觀已試穿到模型上；取得後即可正式裝備。");
+      return;
+    }
+    const selectedId = preview[slot];
+    if (selectedId) game.equipAvatarItem(selectedId);
+    else game.unequipAvatarSlot(slot);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.drawerBackdrop}>
+        <JianghuPaperPanel style={styles.drawer}>
+          <View style={styles.drawerHandle} />
+          <View style={styles.drawerHeader}>
+            <View><Text style={styles.drawerKicker}>江湖衣櫃</Text><Text style={styles.drawerTitle}>試穿與換裝</Text></View>
+            <Pressable onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="關閉換裝面板"><Text style={styles.closeText}>×</Text></Pressable>
+          </View>
+          <View style={styles.previewStage}>
+            <View style={styles.previewGlow} />
+            <CharacterAvatar equipment={preview} height={232} style={styles.previewAvatar} accessibilityLabel="試穿中的角色模型" />
+            <View style={styles.previewCaption}><Text style={styles.previewCaptionKicker}>試穿外觀 · {avatarRarityLabel[selectedItem?.rarity ?? "common"]}</Text><Text style={styles.previewCaptionTitle}>{selectedItem?.name ?? "預設外觀"}</Text></View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotTabs}>
+            {wardrobeSlots.map((entry) => <Pressable key={entry} onPress={() => setSlot(entry)} style={({ pressed }) => [styles.slotTab, slot === entry && styles.slotTabActive, pressed && styles.pressed]}><Text style={[styles.slotTabText, slot === entry && styles.slotTabTextActive]}>{avatarSlotLabel[entry]}</Text></Pressable>)}
+          </ScrollView>
+          <ScrollView style={styles.itemList} contentContainerStyle={styles.itemListContent} showsVerticalScrollIndicator={false}>
+            {options.map((item) => {
+              const owned = game.userItems.some((entry) => entry.item_id === item.id && entry.owned);
+              const equipped = game.avatarEquipment[slot] === item.id;
+              const selected = preview[slot] === item.id;
+              return (
+                <View key={item.id} style={[styles.itemRow, selected && styles.itemRowSelected, !owned && styles.itemRowLocked]}>
+                  <Image source={{ uri: item.asset_url }} style={styles.itemThumb} resizeMode="contain" />
+                  <View style={[styles.raritySeal, { backgroundColor: avatarRarityColor[item.rarity] }]}><Text style={styles.raritySealText}>{avatarRarityLabel[item.rarity].slice(0, 1)}</Text></View>
+                  <View style={styles.itemCopy}><Text style={styles.itemName}>{item.name}</Text><Text style={styles.itemDescription} numberOfLines={1}>{item.description}</Text><Text style={[styles.itemStatus, { color: avatarRarityColor[item.rarity] }]}>{equipped ? "已裝備" : owned ? "已擁有" : "未擁有"}</Text></View>
+                  <Pressable onPress={() => setPreview((current) => ({ ...current, [slot]: item.id }))} style={({ pressed }) => [styles.tryButton, selected && styles.tryButtonSelected, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`試穿${item.name}`}><Text style={[styles.tryButtonText, selected && styles.tryButtonTextSelected]}>{selected ? "試穿中" : "試穿"}</Text></Pressable>
+                </View>
+              );
+            })}
+          </ScrollView>
+          <View style={styles.drawerActions}>
+            <Pressable onPress={() => setPreview((current) => ({ ...current, [slot]: defaultAvatarEquipment[slot] }))} style={({ pressed }) => [styles.unequipButton, pressed && styles.pressed]} accessibilityRole="button"><Text style={styles.unequipButtonText}>卸下</Text></Pressable>
+            <Pressable disabled={!selectedOwned} onPress={equipPreview} style={({ pressed }) => [styles.equipButton, !selectedOwned && styles.disabledButton, pressed && selectedOwned && styles.pressed]} accessibilityRole="button"><Text style={styles.equipButtonText}>{selectedOwned ? "裝備此試穿外觀" : "尚未擁有"}</Text></Pressable>
+          </View>
+        </JianghuPaperPanel>
+      </View>
+    </Modal>
+  );
 }
-
-function AchievementModal({ achievement, onClose }: { achievement: (typeof achievementDefinitions)[number] | null; onClose: () => void }) {
-  const game = useGame();
-  if (!achievement) return null;
-  const level = game.achievementLevels[achievement.key] ?? 0;
-  const progress = achievementProgress(achievement.key, game);
-  const next = achievement.tiers[level] ?? achievement.tiers.at(-1);
-  const currentTier = level > 0 ? achievement.tiers[level - 1].tier : "bronze";
-  const finalTarget = achievement.tiers.at(-1)?.target ?? 1;
-  const complete = level >= achievement.tiers.length;
-  return <Modal visible transparent animationType="fade" onRequestClose={onClose}><Pressable style={styles.modalBackdrop} onPress={onClose} accessibilityLabel="關閉成就詳情"><Pressable style={styles.modalCard} onPress={(event) => event.stopPropagation()}><View style={styles.modalHeader}><Text style={styles.modalKicker}>成就詳情</Text><Pressable onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable></View><Image source={{ uri: achievementArt[achievement.key] }} style={styles.modalBadge} resizeMode="contain" /><Text style={styles.modalTitle}>{achievement.name}</Text><Text style={styles.modalBody}>{achievement.description}</Text><View style={styles.modalStatus}><Text style={styles.modalStatusLabel}>{level ? `已解鎖 · ${tierLabel[currentTier]}` : "尚未解鎖"}</Text><Text style={styles.modalStatusValue}>{progress} / {next?.target ?? 1}</Text></View><TierProgress progress={progress / finalTarget} color={tierColor[currentTier]} tiers={achievement.tiers} /><View style={styles.progressMeta}><Text style={styles.progressPercent}>{Math.min(Math.round((progress / Math.max(next?.target ?? 1, 1)) * 100), 100)}% 完成</Text><Text style={styles.progressRemaining}>{complete ? "四階段已全數完成" : `還差 ${Math.max((next?.target ?? 0) - progress, 0)} 次`}</Text></View><Text style={styles.modalSection}>四階段獎勵</Text><View style={styles.tierList}>{achievement.tiers.map((tier, index) => { const done = level > index; const active = level === index; return <View key={tier.tier} style={[styles.tierRow, done && styles.tierDone, active && styles.tierActive]}><View style={[styles.tierDot, { backgroundColor: done || active ? tierColor[tier.tier] : "#E7F2EF" }]}><Text style={[styles.tierDotText, { color: done || active ? "#FFFFFF" : "#7C9798" }]}>{done ? "✓" : tierLabel[tier.tier]}</Text></View><View style={styles.tierCopy}><Text style={styles.tierName}>{tierLabel[tier.tier]}階{active ? " · 進行中" : done ? " · 已完成" : " · 未解鎖"}</Text><Text style={styles.tierTarget}>完成 {tier.target} 次 · +{tier.rewardCoin} 枚江湖幣</Text>{tier.rewardTitle ? <Text style={styles.tierTitle}>稱號：「{tier.rewardTitle}」</Text> : null}</View></View>; })}</View></Pressable></Pressable></Modal>;
-}
-
-const profilePageStyles = StyleSheet.create({
-  page: { flex: 1, position: "relative" },
-  scroll: { zIndex: 1 },
-});
-
-const unifiedBannerStyles = StyleSheet.create({
-  background: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  profileBanner: { minHeight: 244 },
-  achievementBanner: { height: 154 },
-  textShade: { width: "70%", backgroundColor: "rgba(11,39,48,0.50)" },
-  copy: { zIndex: 3 },
-  profileAvatar: { position: "absolute", right: -5, bottom: -13, zIndex: 2 },
-  profileBelt: { position: "absolute", left: 12, right: 12, bottom: 12, height: 43, borderRadius: 14, paddingHorizontal: 15, backgroundColor: "rgba(17,57,65,0.80)", borderWidth: 1, borderColor: "rgba(255,225,138,0.34)", flexDirection: "row", alignItems: "center", justifyContent: "space-around", zIndex: 4 },
-  beltValue: { color: "#FFF0C8", fontSize: 13, fontWeight: "900", textAlign: "center" },
-  beltLabel: { color: "#C9F3E7", fontSize: 9, fontWeight: "800", marginTop: 1, textAlign: "center" },
-  beltDivider: { width: 1, height: 22, backgroundColor: "rgba(255,255,255,0.22)" },
-  achievementBelt: { position: "absolute", left: 12, right: 12, bottom: 10, height: 28, borderRadius: 10, paddingHorizontal: 12, backgroundColor: "rgba(17,57,65,0.80)", flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 4 },
-  achievementBeltText: { color: "#DDF7EE", fontSize: 9, fontWeight: "900" },
-});
 
 const styles = StyleSheet.create({
-  scrollContent: { paddingBottom: 40 }, head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 12, paddingBottom: 16 }, kicker: { color: "#2E8B91", fontSize: 11, letterSpacing: 1.2, fontWeight: "900" }, heading: { color: "#18343C", fontSize: 27, fontWeight: "900", marginTop: 3 }, settings: { borderWidth: 1, borderColor: "#CFE7E1", borderRadius: 13, paddingHorizontal: 13, paddingVertical: 9 }, settingsText: { color: "#2E8B91", fontWeight: "900", fontSize: 12 },
-  profileBanner: { minHeight: 196, borderRadius: 24, overflow: "hidden", padding: 17, justifyContent: "center", backgroundColor: "#2E8B91" }, profileBannerImage: { borderRadius: 24 }, sceneShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(19,59,66,0.36)" }, profileCharacter: { position: "absolute", right: -10, bottom: -6, width: 184, height: 205 }, profileCopy: { width: "65%", zIndex: 1 }, bannerKicker: { color: "#C9F3E7", fontSize: 10, letterSpacing: 0.8, fontWeight: "900" }, rank: { color: "#FFFFFF", fontSize: 22, fontWeight: "900", marginTop: 6 }, level: { color: "#FFF0C8", fontSize: 12, fontWeight: "900", marginTop: 5 }, bannerNote: { color: "#E1F5EE", fontSize: 11, lineHeight: 16, marginTop: 8 },
-  equipmentPanel: { padding: 15, marginTop: 15 }, equipmentHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }, equipmentKicker: { color: "#B16C22", fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.8 }, equipmentTitle: { color: "#18343C", fontSize: 17, lineHeight: 22, fontWeight: "900", marginTop: 2 }, wardrobeButton: { borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: "#315F78" }, wardrobeButtonText: { color: "#FFF8E8", fontSize: 11, lineHeight: 15, fontWeight: "900" }, equipmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 13 }, equipmentCell: { width: "31.5%", borderRadius: 12, paddingHorizontal: 9, paddingVertical: 8, backgroundColor: "#F7F3E8", borderWidth: 1, borderColor: "#E2D9C8" }, equipmentSlot: { color: "#83938B", fontSize: 9, lineHeight: 12, fontWeight: "800" }, equipmentName: { color: "#3C5D5B", fontSize: 10, lineHeight: 14, fontWeight: "900", marginTop: 2 },
-  section: { color: "#18343C", fontWeight: "900", fontSize: 19, marginTop: 24, marginBottom: 10 }, attrRow: { marginBottom: 12 }, attrHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }, attrName: { color: "#527074", fontWeight: "900", fontSize: 12 }, attrValue: { color: "#18343C", fontWeight: "900", fontSize: 12 }, attrTrack: { height: 8, borderRadius: 8, backgroundColor: "#E2EFEB", overflow: "hidden" }, attrFill: { height: "100%", borderRadius: 8 },
-  achievementBanner: { height: 122, borderRadius: 22, overflow: "hidden", padding: 16, marginTop: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#2E8B91" }, achievementBannerImage: { borderRadius: 22 }, achievementBannerCopy: { width: "70%", zIndex: 1 }, achievementBannerTitle: { color: "#FFFFFF", fontWeight: "900", fontSize: 19, marginTop: 5 }, achievementBannerBody: { color: "#DEF5EC", fontSize: 11, lineHeight: 16, marginTop: 4 }, achievementSeal: { width: 52, height: 52, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,240,200,0.92)", zIndex: 1 }, achievementSealValue: { color: "#B77B22", fontSize: 18, fontWeight: "900" }, achievementSealLabel: { color: "#8A6224", fontSize: 9, fontWeight: "900" }, sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }, meta: { color: "#7C9798", fontSize: 11, fontWeight: "700" },
-  achievementList: { borderRadius: 20, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.72)", borderWidth: 1, borderColor: "#DCEEE9" }, achievementRow: { padding: 13, flexDirection: "row", gap: 10, borderBottomWidth: 1, borderBottomColor: "#E5F0ED" }, achievementUnlocked: { backgroundColor: "rgba(255,249,232,0.44)" }, badge: { width: 43, height: 43, borderRadius: 15, borderWidth: 1, alignItems: "center", justifyContent: "center" }, badgeArt: { width: 36, height: 36 }, badgeLocked: { opacity: 0.34 }, achievementCopy: { flex: 1 }, achievementTitleRow: { flexDirection: "row", justifyContent: "space-between", gap: 6 }, achievementName: { color: "#18343C", fontWeight: "900", fontSize: 13 }, achievementTier: { fontSize: 10, fontWeight: "900" }, achievementDesc: { color: "#7C9798", fontSize: 10, marginTop: 3 }, reward: { color: "#D99632", fontSize: 11, fontWeight: "900", marginTop: 2 }, miniProgressWrap: { marginTop: 8 }, miniTrack: { height: 6, borderRadius: 6, backgroundColor: "#E3EFEB", position: "relative", overflow: "visible" }, miniFill: { height: "100%", borderRadius: 6 }, miniMilestone: { position: "absolute", top: -3, width: 12, height: 12, marginLeft: -6, alignItems: "center" }, miniDot: { width: 11, height: 11, borderRadius: 6, borderWidth: 2 }, miniLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 3 }, miniLabel: { fontSize: 8, fontWeight: "900" },
-  historyList: { borderRadius: 20, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.72)", borderWidth: 1, borderColor: "#DCEEE9" }, historyRow: { padding: 13, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: "#E5F0ED" }, historyMark: { width: 28, height: 28, borderRadius: 14, overflow: "hidden", textAlign: "center", paddingTop: 5, backgroundColor: "#DFF2E8", color: "#2B906B", fontWeight: "900" }, historyCopy: { flex: 1 }, historyTitle: { color: "#18343C", fontWeight: "900", fontSize: 13 }, historySub: { color: "#7C9798", fontSize: 10, marginTop: 3 }, historyReward: { color: "#D99632", fontSize: 10, fontWeight: "900" }, empty: { color: "#7C9798", padding: 15, fontSize: 12 },
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(24,52,60,0.48)", justifyContent: "center", alignItems: "center", padding: 22 }, modalCard: { width: "100%", maxWidth: 380, maxHeight: "88%", backgroundColor: "#FFFFFF", borderRadius: 26, padding: 20, alignItems: "center" }, modalHeader: { width: "100%", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, modalKicker: { color: "#2E8B91", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 }, close: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#E7F2EF" }, closeText: { color: "#2E8B91", fontSize: 23, lineHeight: 26, fontWeight: "900" }, modalBadge: { width: 76, height: 76, marginTop: 4 }, modalTitle: { color: "#18343C", fontWeight: "900", fontSize: 21, marginTop: 2 }, modalBody: { color: "#7C9798", fontSize: 12, textAlign: "center", lineHeight: 18, marginTop: 5 }, modalStatus: { width: "100%", flexDirection: "row", justifyContent: "space-between", marginTop: 16 }, modalStatusLabel: { color: "#2E8B91", fontSize: 11, fontWeight: "900" }, modalStatusValue: { color: "#18343C", fontSize: 11, fontWeight: "900" }, tierProgressWrap: { width: "100%", marginTop: 7, paddingBottom: 22, position: "relative" }, tierTrack: { height: 8, borderRadius: 8, backgroundColor: "#E3EFEB", overflow: "hidden" }, tierFill: { height: "100%", borderRadius: 8 }, tierMarkers: { ...StyleSheet.absoluteFillObject, top: 0 }, tierMarker: { position: "absolute", alignItems: "center", transform: [{ translateX: -9 }] }, tierMarkerDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: "#FFFFFF" }, tierMarkerLabel: { fontSize: 8, fontWeight: "900", marginTop: 1 }, progressMeta: { width: "100%", flexDirection: "row", justifyContent: "space-between", marginTop: 1 }, progressPercent: { color: "#2E8B91", fontSize: 10, fontWeight: "900" }, progressRemaining: { color: "#D99632", fontSize: 10, fontWeight: "900" }, modalSection: { alignSelf: "flex-start", color: "#18343C", fontSize: 14, fontWeight: "900", marginTop: 16 }, tierList: { width: "100%", marginTop: 7, gap: 6 }, tierRow: { flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderRadius: 13, backgroundColor: "#F4FBF8", borderWidth: 1, borderColor: "#E1F0EC" }, tierDone: { backgroundColor: "#FFF8E7", borderColor: "#F1DDAA" }, tierActive: { borderColor: "#E86D67" }, tierDot: { width: 32, height: 32, borderRadius: 11, alignItems: "center", justifyContent: "center" }, tierDotText: { fontSize: 10, fontWeight: "900" }, tierCopy: { flex: 1 }, tierName: { color: "#18343C", fontSize: 11, fontWeight: "900" }, tierTarget: { color: "#7C9798", fontSize: 10, marginTop: 2 }, tierTitle: { color: "#D99632", fontSize: 10, fontWeight: "900", marginTop: 2 },
-  wardrobeBackdrop: { flex: 1, backgroundColor: "rgba(18,49,48,0.62)", justifyContent: "flex-end", padding: 12 }, wardrobeSheet: { maxHeight: "91%", padding: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }, wardrobeHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, wardrobeKicker: { color: "#B16C22", fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.9 }, wardrobeTitle: { color: "#18343C", fontSize: 20, lineHeight: 26, fontWeight: "900", marginTop: 2 }, wardrobeClose: { width: 31, height: 31, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#E8EFE8" }, wardrobeCloseText: { color: "#315F78", fontSize: 22, lineHeight: 27, fontWeight: "900" }, wardrobePreview: { height: 220, overflow: "hidden", borderRadius: 18, marginTop: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#DDEDE6", borderWidth: 1, borderColor: "#BED8CC" }, wardrobePreviewMist: { position: "absolute", left: 0, right: 0, bottom: 0, height: 86, backgroundColor: "rgba(99,151,134,0.30)" }, wardrobeAvatar: { position: "absolute", bottom: -15 }, wardrobeApplyGlow: { position: "absolute", width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(255,224,129,0.70)" }, wardrobeApplySeal: { position: "absolute", width: 64, height: 64, borderRadius: 20, backgroundColor: "#C94D42", borderWidth: 2, borderColor: "#A63830", alignItems: "center", justifyContent: "center" }, wardrobeApplySealText: { color: "#FFF1C8", fontSize: 17, lineHeight: 21, fontWeight: "900" }, previewCaption: { position: "absolute", left: 12, bottom: 10, borderRadius: 11, paddingHorizontal: 9, paddingVertical: 7, backgroundColor: "rgba(20,61,66,0.83)" }, previewCaptionKicker: { color: "#C9F3E7", fontSize: 8, lineHeight: 11, fontWeight: "900" }, previewCaptionTitle: { color: "#FFF9E8", fontSize: 11, lineHeight: 15, fontWeight: "900", marginTop: 1 }, slotTabs: { gap: 7, paddingVertical: 13 }, slotTab: { borderRadius: 13, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "#D9D1C0", backgroundColor: "#FFFDF6" }, slotTabActive: { backgroundColor: "#315F78", borderColor: "#315F78" }, slotTabText: { color: "#6E837C", fontSize: 11, lineHeight: 14, fontWeight: "900" }, slotTabTextActive: { color: "#FFFFFF" }, wardrobeOptions: { maxHeight: 190 }, wardrobeOptionsContent: { gap: 7, paddingBottom: 4 }, wardrobeOption: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 9, backgroundColor: "#FFFDF6", borderWidth: 1, borderColor: "#E1D9C0" }, wardrobeOptionSelected: { borderColor: "#B16C22", backgroundColor: "#FFF7E7" }, rarityMark: { width: 30, height: 30, borderRadius: 11, alignItems: "center", justifyContent: "center" }, rarityMarkText: { color: "#FFFFFF", fontSize: 12, lineHeight: 16, fontWeight: "900" }, wardrobeOptionCopy: { flex: 1, minWidth: 0 }, wardrobeOptionName: { color: "#274A49", fontSize: 12, lineHeight: 16, fontWeight: "900" }, wardrobeOptionDesc: { color: "#82928B", fontSize: 10, lineHeight: 14, marginTop: 1 }, optionState: { fontSize: 10, lineHeight: 14, fontWeight: "900" }, noWardrobeItem: { color: "#80918A", fontSize: 11, lineHeight: 17, paddingHorizontal: 5, paddingVertical: 14 }, wardrobeActions: { flexDirection: "row", gap: 9, marginTop: 14 }, unequipButton: { flex: 0.72, minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#E9EFEA", borderWidth: 1, borderColor: "#CAD8CE" }, unequipButtonText: { color: "#51726B", fontSize: 12, lineHeight: 16, fontWeight: "900" }, equipButton: { flex: 1.28, minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#C94D42", borderWidth: 1, borderColor: "#A63830" }, equipButtonText: { color: "#FFFFFF", fontSize: 12, lineHeight: 16, fontWeight: "900" }, actionDisabled: { opacity: 0.65 },
-  pressed: { opacity: 0.8, transform: [{ scale: 0.985 }] },
+  page: { flex: 1, position: "relative" },
+  scrollContent: { paddingTop: 10, paddingBottom: 42 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 4, paddingBottom: 14 },
+  identityRow: { flexDirection: "row", alignItems: "center", gap: 9 },
+  brandMark: { width: 37, height: 37 },
+  kicker: { color: "#2E7C78", fontSize: 10, lineHeight: 14, letterSpacing: 1, fontWeight: "900" },
+  heading: { color: "#213D3C", fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: -1 },
+  nickname: { color: "#74847C", fontSize: 10, lineHeight: 14, fontWeight: "800", marginTop: -1 },
+  settings: { borderWidth: 1, borderColor: "#C7DED5", backgroundColor: "rgba(255,253,246,0.85)", borderRadius: 13, paddingHorizontal: 12, paddingVertical: 8 },
+  settingsText: { color: "#2E7C78", fontSize: 11, lineHeight: 14, fontWeight: "900" },
+  stage: { height: 362, borderRadius: 26, overflow: "hidden", backgroundColor: "#315F78", shadowColor: "#315F78", shadowOpacity: 0.23, shadowRadius: 13, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
+  stageShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(9,42,45,0.20)" },
+  stageMist: { position: "absolute", left: -40, right: -40, bottom: 20, height: 115, borderRadius: 100, backgroundColor: "rgba(204,232,218,0.16)" },
+  stageAvatar: { position: "absolute", alignSelf: "center", bottom: -18, zIndex: 2 },
+  stageCopy: { position: "absolute", left: 17, top: 18, width: "56%", zIndex: 3 },
+  stageKicker: { color: "#D8F3E6", fontSize: 9, lineHeight: 13, letterSpacing: 0.5, fontWeight: "900" },
+  stageTitle: { color: "#FFFDF6", fontSize: 24, lineHeight: 30, fontWeight: "900", marginTop: 5 },
+  stageMeta: { color: "#FFE2A0", fontSize: 11, lineHeight: 16, fontWeight: "900", marginTop: 4 },
+  stageNote: { color: "#D9F3E9", fontSize: 11, lineHeight: 16, marginTop: 7, fontWeight: "700" },
+  stageBelt: { position: "absolute", left: 12, right: 12, bottom: 11, minHeight: 47, borderRadius: 15, backgroundColor: "rgba(13,55,58,0.83)", borderWidth: 1, borderColor: "rgba(255,225,138,0.37)", flexDirection: "row", alignItems: "center", justifyContent: "space-around", zIndex: 4 },
+  beltItem: { alignItems: "center", minWidth: 68 }, beltValue: { color: "#FFF0C8", fontSize: 13, lineHeight: 17, fontWeight: "900" }, beltLabel: { color: "#CFF1E4", fontSize: 8, lineHeight: 11, fontWeight: "800", marginTop: 1 }, beltDivider: { width: 1, height: 23, backgroundColor: "rgba(255,255,255,0.20)" },
+  equipmentPanel: { marginTop: 14, padding: 15 },
+  panelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  panelKicker: { color: "#AD722A", fontSize: 10, lineHeight: 14, letterSpacing: 0.9, fontWeight: "900" },
+  panelTitle: { color: "#213D3C", fontSize: 18, lineHeight: 23, fontWeight: "900", marginTop: 1 },
+  changeButton: { borderRadius: 13, backgroundColor: "#B64732", paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: "#963527" },
+  changeButtonText: { color: "#FFFFFF", fontSize: 11, lineHeight: 14, fontWeight: "900" },
+  equipmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 13 },
+  equipmentCell: { width: "31.5%", minHeight: 65, flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#F9F4E7", borderWidth: 1, borderColor: "#E1D8C7", paddingHorizontal: 6, paddingVertical: 6, borderRadius: 12 },
+  equipmentThumb: { width: 25, height: 38 }, emptyThumb: { width: 25, height: 38, alignItems: "center", justifyContent: "center" }, emptyThumbText: { color: "#95A39C", fontSize: 17, lineHeight: 20 }, equipmentCopy: { flex: 1, minWidth: 0 }, equipmentSlot: { color: "#84948B", fontSize: 8, lineHeight: 11, fontWeight: "900" }, equipmentName: { color: "#345450", fontSize: 10, lineHeight: 13, fontWeight: "900", marginTop: 1 }, equipmentRarity: { fontSize: 8, lineHeight: 11, fontWeight: "900", marginTop: 1 },
+  trainingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginTop: 23, marginHorizontal: 5 }, trainingTitle: { color: "#213D3C", fontSize: 18, lineHeight: 23, fontWeight: "900" }, trainingHint: { color: "#84948B", fontSize: 9, lineHeight: 12, fontWeight: "800" },
+  attributeStrip: { marginTop: 9, flexDirection: "row", padding: 10, borderRadius: 19, borderWidth: 1, borderColor: "#DCE8DF", backgroundColor: "rgba(255,253,246,0.78)" }, attributeItem: { flex: 1, alignItems: "center" }, attributeSeal: { width: 27, height: 27, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" }, attributeSealText: { fontSize: 12, lineHeight: 15, fontWeight: "900" }, attributeName: { color: "#74847C", fontSize: 9, lineHeight: 12, fontWeight: "800", marginTop: 4 }, attributeValue: { fontSize: 14, lineHeight: 18, fontWeight: "900", marginTop: 1 }, attributeTrack: { width: "74%", height: 3, borderRadius: 3, backgroundColor: "#E3EAE1", marginTop: 4, overflow: "hidden" }, attributeFill: { height: "100%", borderRadius: 3 },
+  drawerBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,45,45,0.63)", paddingHorizontal: 8, paddingTop: 54 },
+  drawer: { maxHeight: "100%", padding: 15, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }, drawerHandle: { width: 39, height: 4, borderRadius: 3, backgroundColor: "#C9C0AE", alignSelf: "center", marginBottom: 10 },
+  drawerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, drawerKicker: { color: "#AD722A", fontSize: 10, lineHeight: 14, letterSpacing: 0.8, fontWeight: "900" }, drawerTitle: { color: "#213D3C", fontSize: 20, lineHeight: 26, fontWeight: "900", marginTop: 1 },
+  closeButton: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#E4EEE6", alignItems: "center", justifyContent: "center" }, closeText: { color: "#315F78", fontSize: 22, lineHeight: 25, fontWeight: "900" },
+  previewStage: { height: 213, marginTop: 11, borderRadius: 17, overflow: "hidden", backgroundColor: "#D8E8DE", borderWidth: 1, borderColor: "#BFD6C8", alignItems: "center", justifyContent: "center" }, previewGlow: { position: "absolute", width: 186, height: 92, borderRadius: 100, bottom: 11, backgroundColor: "rgba(255,225,136,0.34)" }, previewAvatar: { position: "absolute", bottom: -18 }, previewCaption: { position: "absolute", left: 10, bottom: 9, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: "rgba(20,61,64,0.84)" }, previewCaptionKicker: { color: "#D1F2E5", fontSize: 8, lineHeight: 11, fontWeight: "900" }, previewCaptionTitle: { color: "#FFF9E8", fontSize: 11, lineHeight: 14, fontWeight: "900", marginTop: 1 },
+  slotTabs: { gap: 7, paddingVertical: 12 }, slotTab: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 13, borderWidth: 1, borderColor: "#D8D0BE", backgroundColor: "#FFFDF6" }, slotTabActive: { backgroundColor: "#315F78", borderColor: "#315F78" }, slotTabText: { color: "#6F827A", fontSize: 11, lineHeight: 14, fontWeight: "900" }, slotTabTextActive: { color: "#FFFFFF" },
+  itemList: { maxHeight: 213 }, itemListContent: { gap: 7, paddingBottom: 4 }, itemRow: { minHeight: 69, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 14, backgroundColor: "#FFFDF6", borderWidth: 1, borderColor: "#E0D8C7" }, itemRowSelected: { backgroundColor: "#FFF6E4", borderColor: "#B47B2C" }, itemRowLocked: { opacity: 0.72 }, itemThumb: { width: 36, height: 50 }, raritySeal: { width: 23, height: 23, borderRadius: 8, alignItems: "center", justifyContent: "center" }, raritySealText: { color: "#FFFFFF", fontSize: 10, lineHeight: 13, fontWeight: "900" }, itemCopy: { flex: 1, minWidth: 0 }, itemName: { color: "#2F504C", fontSize: 12, lineHeight: 16, fontWeight: "900" }, itemDescription: { color: "#80918A", fontSize: 9, lineHeight: 13, marginTop: 1 }, itemStatus: { fontSize: 9, lineHeight: 12, fontWeight: "900", marginTop: 2 }, tryButton: { minWidth: 48, alignItems: "center", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: "#EDF2E9", borderWidth: 1, borderColor: "#D0DDD1" }, tryButtonSelected: { backgroundColor: "#315F78", borderColor: "#315F78" }, tryButtonText: { color: "#57756C", fontSize: 10, lineHeight: 13, fontWeight: "900" }, tryButtonTextSelected: { color: "#FFFFFF" },
+  drawerActions: { flexDirection: "row", gap: 9, marginTop: 12 }, unequipButton: { flex: 0.75, minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: "#C7D7CA", backgroundColor: "#E9EFEA" }, unequipButtonText: { color: "#55736A", fontSize: 12, lineHeight: 16, fontWeight: "900" }, equipButton: { flex: 1.25, minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#B64732", borderWidth: 1, borderColor: "#963527" }, equipButtonText: { color: "#FFFFFF", fontSize: 12, lineHeight: 16, fontWeight: "900" }, disabledButton: { opacity: 0.52 },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.98 }] },
 });
