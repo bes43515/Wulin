@@ -1,16 +1,15 @@
-/** 山門手札：以無框透明分層讓少俠自然融入山門、演武台與換裝抽屜，不建立人物圖片卡。 */
+/** 山門手札 Q 版模型：所有圖層共用 1:1 人體模板，並以安全順序限制服飾、配件與特效。 */
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { avatarLayersFor, avatarRarityEffect, avatarRarityForEquipmentChange, defaultAvatarEquipment, type AvatarEquipment, type AvatarLayerSlot } from "@/lib/avatar-system";
+import { avatarLayersFor, avatarRarityEffect, avatarRarityForEquipmentChange, defaultAvatarEquipment, type AvatarEquipment } from "@/lib/avatar-system";
+import { avatarLayerDepth, type AvatarLayerSlot } from "@/lib/avatar-template";
 import { avatarImageSource } from "@/components/avatar-assets";
 
 type CharacterAvatarProps = { equipment?: AvatarEquipment; height?: number; style?: StyleProp<ViewStyle>; accessibilityLabel?: string; animateChanges?: boolean };
-const layerDepth: Record<AvatarLayerSlot, number> = { aura_effect: 0, back_accessory: 1, base_body: 2, hair: 3, outfit: 4, weapon_back: 5, weapon_front: 6, head_accessory: 7 };
 
-/** 以固定 3:4 畫布和絕對定位堆疊所有透明圖層，供首頁、角色頁與試穿面板共用。 */
 export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 240, style, accessibilityLabel = "目前角色外觀", animateChanges = true }: CharacterAvatarProps) {
-  const width = Math.round(height * 0.75);
+  const width = height;
   const layers = avatarLayersFor(equipment);
   const signature = layers.map((layer) => `${layer.slot}:${layer.assetUrl}`).join("|");
   const previousSignature = useRef(signature);
@@ -26,10 +25,7 @@ export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 2
     previousEquipment.current = equipment;
     const nextEffect = avatarRarityEffect[rarity];
     setEffect(nextEffect);
-    transition.stopAnimation();
-    qiFlash.stopAnimation();
-    transition.setValue(0);
-    qiFlash.setValue(0);
+    transition.stopAnimation(); qiFlash.stopAnimation(); transition.setValue(0); qiFlash.setValue(0);
     Animated.parallel([
       Animated.timing(transition, { toValue: 1, duration: nextEffect.impactDuration + nextEffect.settleDuration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.sequence([
@@ -43,12 +39,16 @@ export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 2
   const flashScale = qiFlash.interpolate({ inputRange: [0, 1], outputRange: [effect.flashStart, effect.flashEnd] });
   const flashOpacity = qiFlash.interpolate({ inputRange: [0, 1], outputRange: [0, effect.flashPeakOpacity] });
   const ringOpacity = qiFlash.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, effect.flashPeakOpacity, 0] });
-  return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}><Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} /><Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />{layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={avatarImageSource(layer.assetUrl)} resizeMode="contain" style={[styles.layer, { zIndex: layerDepth[layer.slot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}</View>;
+  return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}>
+    <Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} />
+    <Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />
+    {layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={avatarImageSource(layer.assetUrl)} resizeMode="contain" style={[styles.layer, { zIndex: avatarLayerDepth[layer.slot as AvatarLayerSlot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}
+  </View>;
 }
 
 const styles = StyleSheet.create({
   avatar: { position: "relative", alignItems: "center", justifyContent: "center", overflow: "visible" },
   layer: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  qiFlash: { position: "absolute", width: "72%", aspectRatio: 1, borderRadius: 999 },
-  qiRing: { position: "absolute", width: "60%", aspectRatio: 1, borderRadius: 999, borderWidth: 3 },
+  qiFlash: { position: "absolute", width: "55%", aspectRatio: 1, borderRadius: 999, top: "57%", zIndex: avatarLayerDepth.aura_front },
+  qiRing: { position: "absolute", width: "48%", aspectRatio: 1, borderRadius: 999, borderWidth: 3, top: "60%", zIndex: avatarLayerDepth.aura_front },
 });

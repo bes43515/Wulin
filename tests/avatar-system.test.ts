@@ -1,43 +1,63 @@
 import { describe, expect, it } from "vitest";
 
-import { avatarItemById, avatarItems, avatarLayersFor, avatarRarityForEquipmentChange, defaultAvatarEquipment, profileFromEquipment } from "../lib/avatar-system";
+import { avatarItemById, avatarItems, avatarItemSafetyViolations, avatarLayersFor, avatarRarityForEquipmentChange, defaultAvatarEquipment, profileFromEquipment } from "../lib/avatar-system";
+import { avatarLayerOrder, avatarSafeZones } from "../lib/avatar-template";
 
-describe("avatar-system", () => {
-  it("renders the base body before the front weapon when the initial hair and cloth are baked into the base asset", () => {
-    const layers = avatarLayersFor(defaultAvatarEquipment);
-    expect(layers.map((layer) => layer.slot)).toEqual(["base_body", "weapon_front"]);
+describe("Q 版 avatar-system", () => {
+  it("renders the initial Q-version model with the baked-in body, cloth and hair plus the right-hand weapon", () => {
+    expect(avatarLayersFor(defaultAvatarEquipment).map((layer) => layer.slot)).toEqual(["base_body", "weapon_front"]);
   });
 
-  it("inserts selected accessories in the prescribed stack order", () => {
-    const layers = avatarLayersFor({ ...defaultAvatarEquipment, head_accessory: "avatar-head-hat-gold", back_accessory: "avatar-back-cape-redflame", aura: "avatar-aura-goldmaster" });
-    expect(layers.map((layer) => layer.slot)).toEqual(["base_body", "back_accessory", "weapon_front", "head_accessory", "aura_effect"]);
+  it("keeps aura, cape, body, outfit, weapon, hair and head accessory in the prescribed stack", () => {
+    const equipment = {
+      ...defaultAvatarEquipment,
+      outfit: "avatar-outfit-sect",
+      weapon: "avatar-weapon-iron",
+      head_accessory: "avatar-headband-blue",
+      back_accessory: "avatar-back-cape-plain",
+      aura: "avatar-aura-innerglow",
+    };
+    expect(avatarLayersFor(equipment).map((layer) => layer.slot)).toEqual(["aura_back", "back_accessory", "base_body", "outfit", "weapon_front", "head_accessory", "aura_front"]);
   });
 
-  it("maps currently equipped slots into the persistent profile fields", () => {
-    const profile = profileFromEquipment({ ...defaultAvatarEquipment, outfit: "avatar-outfit-sect", weapon: "avatar-weapon-iron" });
+  it("gives every wearable asset a valid declared safety zone", () => {
+    expect(avatarItems.flatMap(avatarItemSafetyViolations)).toEqual([]);
+  });
+
+  it("keeps every outfit out of the face protection rectangle", () => {
+    const outfits = avatarItems.filter((entry) => entry.type === "outfit");
+    expect(outfits.every((entry) => entry.safe_zones.length === 1 && entry.safe_zones[0] === "outfit")).toBe(true);
+    expect(avatarSafeZones.face).toEqual({ x: 360, y: 120, width: 300, height: 230 });
+  });
+
+  it("maps the requested five-step try-on equipment into the shared persistent profile", () => {
+    const testLook = {
+      ...defaultAvatarEquipment,
+      outfit: "avatar-outfit-sect",
+      head_accessory: "avatar-headband-blue",
+      weapon: "avatar-weapon-iron",
+      back_accessory: "avatar-back-cape-plain",
+      aura: "avatar-aura-innerglow",
+    };
+    const profile = profileFromEquipment(testLook);
     expect(profile.current_outfit_id).toBe("avatar-outfit-sect");
+    expect(profile.current_head_accessory_id).toBe("avatar-headband-blue");
     expect(profile.current_weapon_id).toBe("avatar-weapon-iron");
-    expect(profile.current_aura_id).toBeNull();
+    expect(profile.current_back_accessory_id).toBe("avatar-back-cape-plain");
+    expect(profile.current_aura_id).toBe("avatar-aura-innerglow");
   });
 
-  it("includes the requested initial wardrobe categories", () => {
-    const names = avatarItems.map((item) => item.name);
+  it("keeps the requested complete wardrobe and dedicated layer asset keys", () => {
+    const names = avatarItems.map((entry) => entry.name);
     expect(names).toEqual(expect.arrayContaining(["門派弟子袍", "青雲俠客服", "赤焰披風袍", "木劍", "鐵劍", "雲紋長劍", "龍淵古劍", "金絲斗笠", "赤焰披風", "金色宗師光環"]));
+    expect(new Set(avatarItems.map((entry) => entry.asset_url)).size).toBe(avatarItems.length);
   });
 
-  it("uses dedicated assets for every completed legendary wardrobe layer", () => {
-    const goldHat = avatarItemById("avatar-head-hat-gold");
-    const redCape = avatarItemById("avatar-back-cape-redflame");
-    const masterAura = avatarItemById("avatar-aura-goldmaster");
-    expect(goldHat?.asset_url).toMatch(/avatar-head-hat-gold/);
-    expect(redCape?.asset_url).toMatch(/avatar-back-cape-redflame/);
-    expect(masterAura?.asset_url).toMatch(/avatar-aura-goldmaster/);
-    expect(new Set([goldHat?.asset_url, redCape?.asset_url, masterAura?.asset_url]).size).toBe(3);
-  });
-
-  it("uses the highest rarity of changed equipment for both equipping and unequipping effects", () => {
+  it("maintains a complete canonical layer order and rarity transition behaviour", () => {
+    expect(avatarLayerOrder).toEqual(["aura_back", "back_accessory", "base_body", "outfit", "hair_back", "weapon_back", "weapon_front", "hair_front", "head_accessory", "aura_front"]);
     const legendary = { ...defaultAvatarEquipment, weapon: "avatar-weapon-dragon" };
     expect(avatarRarityForEquipmentChange(defaultAvatarEquipment, legendary)).toBe("legendary");
     expect(avatarRarityForEquipmentChange(legendary, defaultAvatarEquipment)).toBe("legendary");
+    expect(avatarItemById("avatar-head-hat-gold")?.safe_zones).toEqual(["head_accessory"]);
   });
 });

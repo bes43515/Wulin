@@ -13,6 +13,13 @@ import { avatarImageSource } from "@/components/avatar-assets";
 
 const wardrobeSlots: AvatarSlot[] = ["outfit", "weapon", "head_accessory", "back_accessory", "aura"];
 const summarySlots: AvatarSlot[] = ["outfit", "weapon", "head_accessory", "back_accessory", "aura"];
+const qTemplateTestSteps: { slot: AvatarSlot; itemId: string; label: string; check: string }[] = [
+  { slot: "outfit", itemId: "avatar-outfit-sect", label: "1. 換上門派弟子袍", check: "服飾停在頸部下方，臉部完整可見" },
+  { slot: "head_accessory", itemId: "avatar-headband-blue", label: "2. 換上青布髮帶", check: "頭飾只貼合髮際，不遮住雙眼" },
+  { slot: "weapon", itemId: "avatar-weapon-iron", label: "3. 裝備鐵劍", check: "武器固定在右手外側，不穿越胸口" },
+  { slot: "back_accessory", itemId: "avatar-back-cape-plain", label: "4. 裝備素色披風", check: "披風保持於身體與服飾後方" },
+  { slot: "aura", itemId: "avatar-aura-innerglow", label: "5. 開啟內力微光", check: "光效環繞足邊與外圍，不遮住表情" },
+];
 const attributes: { key: TaskType; label: string; color: string }[] = [
   { key: "inner", label: "內力", color: "#7564B4" },
   { key: "body", label: "筋骨", color: "#B64732" },
@@ -26,6 +33,13 @@ export default function ProfileScreen() {
   const [wardrobeSlot, setWardrobeSlot] = React.useState<AvatarSlot>("outfit");
   const equippedSummary = summarySlots.map((slot) => ({ slot, item: avatarItemById(game.avatarEquipment[slot]) }));
   const openWardrobe = (slot: AvatarSlot) => { setWardrobeSlot(slot); setWardrobeVisible(true); };
+  const nextTemplateStepIndex = qTemplateTestSteps.findIndex((step) => game.avatarEquipment[step.slot] !== step.itemId);
+  const templateTestComplete = nextTemplateStepIndex === -1;
+  const activeTemplateStep = qTemplateTestSteps[templateTestComplete ? qTemplateTestSteps.length - 1 : nextTemplateStepIndex];
+  const runNextTemplateStep = () => {
+    if (templateTestComplete) { openWardrobe("outfit"); return; }
+    game.equipAvatarItem(activeTemplateStep.itemId);
+  };
 
   return (
     <ScreenContainer containerClassName="bg-[#F4F1E7]" className="px-4">
@@ -50,7 +64,7 @@ export default function ProfileScreen() {
             <Image source={customHeroBanner} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
             <View style={styles.stageShade} />
             <View style={styles.stageMist} />
-            <CharacterAvatar equipment={game.avatarEquipment} height={338} style={styles.stageAvatar} accessibilityLabel="演武台上已裝備完整外觀的少俠模型" />
+            <CharacterAvatar equipment={game.avatarEquipment} height={338} style={styles.stageAvatar} accessibilityLabel="演武台上已裝備完整外觀的 Q 版少俠模型" />
             <View style={styles.stageCopy}>
               <Text style={styles.stageKicker}>{game.sect} · 山門演武台</Text>
               <Text style={styles.stageTitle}>{levelTitle(game.level)}</Text>
@@ -85,6 +99,12 @@ export default function ProfileScreen() {
                 </Pressable>
               ))}
             </View>
+          </JianghuPaperPanel>
+
+          <JianghuPaperPanel style={styles.templateTestPanel}>
+            <View style={styles.templateTestHeader}><View><Text style={styles.panelKicker}>Q 版人體對位驗收</Text><Text style={styles.templateTestTitle}>{templateTestComplete ? "五步驗收已完成" : activeTemplateStep.label}</Text></View><Text style={styles.templateTestCount}>{templateTestComplete ? "5 / 5" : `${nextTemplateStepIndex + 1} / 5`}</Text></View>
+            <Text style={styles.templateTestHint}>{templateTestComplete ? "所有配件皆已在固定模板上裝備；可回到衣櫥自由試穿。" : activeTemplateStep.check}</Text>
+            <Pressable onPress={runNextTemplateStep} style={({ pressed }) => [styles.templateTestButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={templateTestComplete ? "開啟衣櫥重新檢視外觀" : activeTemplateStep.label}><Text style={styles.templateTestButtonText}>{templateTestComplete ? "開啟衣櫥檢視" : "套用下一步驗收外觀"}</Text></Pressable>
           </JianghuPaperPanel>
 
           <View style={styles.trainingHeader}><Text style={styles.trainingTitle}>今日修為</Text><Text style={styles.trainingHint}>功力隨每日試煉積累</Text></View>
@@ -187,7 +207,7 @@ const styles = StyleSheet.create({
   stage: { height: 362, borderRadius: 26, overflow: "hidden", backgroundColor: "#315F78", shadowColor: "#315F78", shadowOpacity: 0.23, shadowRadius: 13, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
   stageShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(9,42,45,0.20)" },
   stageMist: { position: "absolute", left: -40, right: -40, bottom: 20, height: 115, borderRadius: 100, backgroundColor: "rgba(204,232,218,0.16)" },
-  stageAvatar: { position: "absolute", alignSelf: "center", bottom: -18, zIndex: 2 },
+  stageAvatar: { position: "absolute", right: 2, bottom: -6, zIndex: 2 },
   stageCopy: { position: "absolute", left: 17, top: 18, width: "56%", zIndex: 3 },
   stageKicker: { color: "#D8F3E6", fontSize: 9, lineHeight: 13, letterSpacing: 0.5, fontWeight: "900" },
   stageTitle: { color: "#FFFDF6", fontSize: 24, lineHeight: 30, fontWeight: "900", marginTop: 5 },
@@ -204,6 +224,7 @@ const styles = StyleSheet.create({
   equipmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 13 },
   equipmentCell: { width: "31.5%", minHeight: 65, flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#F9F4E7", borderWidth: 1, borderColor: "#E1D8C7", paddingHorizontal: 6, paddingVertical: 6, borderRadius: 12 },
   equipmentThumb: { width: 25, height: 38 }, emptyThumb: { width: 25, height: 38, alignItems: "center", justifyContent: "center" }, emptyThumbText: { color: "#95A39C", fontSize: 17, lineHeight: 20 }, equipmentCopy: { flex: 1, minWidth: 0 }, equipmentSlot: { color: "#84948B", fontSize: 8, lineHeight: 11, fontWeight: "900" }, equipmentName: { color: "#345450", fontSize: 10, lineHeight: 13, fontWeight: "900", marginTop: 1 }, equipmentRarity: { fontSize: 8, lineHeight: 11, fontWeight: "900", marginTop: 1 },
+  templateTestPanel: { marginTop: 12, padding: 14, borderColor: "#C9DDD2", backgroundColor: "#FAF8ED" }, templateTestHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, templateTestTitle: { color: "#213D3C", fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 2 }, templateTestCount: { color: "#B47B2C", fontSize: 13, lineHeight: 17, fontWeight: "900", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: "#FFF0C8" }, templateTestHint: { color: "#60766D", fontSize: 10, lineHeight: 15, marginTop: 8, fontWeight: "800" }, templateTestButton: { marginTop: 10, minHeight: 39, borderRadius: 12, backgroundColor: "#315F78", alignItems: "center", justifyContent: "center" }, templateTestButtonText: { color: "#FFFFFF", fontSize: 11, lineHeight: 14, fontWeight: "900" },
   trainingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginTop: 23, marginHorizontal: 5 }, trainingTitle: { color: "#213D3C", fontSize: 18, lineHeight: 23, fontWeight: "900" }, trainingHint: { color: "#84948B", fontSize: 9, lineHeight: 12, fontWeight: "800" },
   attributeStrip: { marginTop: 9, flexDirection: "row", padding: 10, borderRadius: 19, borderWidth: 1, borderColor: "#DCE8DF", backgroundColor: "rgba(255,253,246,0.78)" }, attributeItem: { flex: 1, alignItems: "center" }, attributeSeal: { width: 27, height: 27, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" }, attributeSealText: { fontSize: 12, lineHeight: 15, fontWeight: "900" }, attributeName: { color: "#74847C", fontSize: 9, lineHeight: 12, fontWeight: "800", marginTop: 4 }, attributeValue: { fontSize: 14, lineHeight: 18, fontWeight: "900", marginTop: 1 }, attributeTrack: { width: "74%", height: 3, borderRadius: 3, backgroundColor: "#E3EAE1", marginTop: 4, overflow: "hidden" }, attributeFill: { height: "100%", borderRadius: 3 },
   drawerBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,45,45,0.63)", paddingHorizontal: 8, paddingTop: 54 },

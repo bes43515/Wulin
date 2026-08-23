@@ -1,6 +1,39 @@
+import {
+  avatarLayerDepth,
+  avatarLayerHasValidSafeZone,
+  avatarLayerOrder,
+  type AvatarLayerSlot,
+  type AvatarSafeZone,
+} from "./avatar-template";
+
+export type { AvatarLayerSlot } from "./avatar-template";
 export type AvatarSlot = "outfit" | "weapon" | "hair" | "head_accessory" | "back_accessory" | "aura";
-export type AvatarLayerSlot = "base_body" | "hair" | "outfit" | "back_accessory" | "weapon_back" | "weapon_front" | "head_accessory" | "aura_effect";
 export type AvatarRarity = "common" | "rare" | "epic" | "legendary";
+export type AvatarEquipment = Record<AvatarSlot, string | null>;
+
+/** 素材鍵與本機檔案一一對應；不可再使用未保證可存取的暫時網址。 */
+export const avatarAsset = {
+  baseBody: "avatar-q://base-body",
+  hairFront: "avatar-q://hair-front",
+  outfitCloth: "avatar-q://outfit-cloth",
+  outfitSect: "avatar-q://outfit-sect",
+  outfitQingyun: "avatar-q://outfit-qingyun",
+  outfitRedflame: "avatar-q://outfit-redflame",
+  weaponWood: "avatar-q://weapon-wood",
+  weaponIron: "avatar-q://weapon-iron",
+  weaponCloud: "avatar-q://weapon-cloud",
+  weaponDragon: "avatar-q://weapon-dragon",
+  headbandBlue: "avatar-q://headband-blue",
+  headOrnamentSect: "avatar-q://head-ornament-sect",
+  headHatGold: "avatar-q://head-hat-gold",
+  capePlain: "avatar-q://back-cape-plain",
+  capeRedflame: "avatar-q://back-cape-redflame",
+  swordcase: "avatar-q://back-swordcase",
+  innerGlowBack: "avatar-q://aura-innerglow-back",
+  swordQiBack: "avatar-q://aura-swordqi-back",
+  goldMasterBack: "avatar-q://aura-goldmaster-back",
+  auraFrontClear: "avatar-q://aura-front-clear",
+} as const;
 
 export type AvatarItem = {
   id: string;
@@ -11,6 +44,7 @@ export type AvatarItem = {
   price_coin: number;
   asset_url: string;
   layer_order: AvatarLayerSlot;
+  safe_zones: readonly AvatarSafeZone[];
   compatible_character_type: "young_wuxia";
   unlock_condition: string;
   created_at: string;
@@ -30,31 +64,36 @@ export type UserProfile = {
   current_aura_id: string | null;
 };
 
-export type AvatarEquipment = Record<AvatarSlot, string | null>;
-
-export const avatarBaseBodyAsset = "/manus-storage/avatar-base-body_5b4712cb.png";
+export const avatarBaseBodyAsset = avatarAsset.baseBody;
 export const avatarBrandMark = "/manus-storage/wulin-mountain-gate-mark_00e65824.png";
-const createdAt = "2026-08-23T00:00:00.000Z";
+const createdAt = "2026-08-24T00:00:00.000Z";
 
+const item = (data: Omit<AvatarItem, "compatible_character_type" | "created_at">): AvatarItem => ({
+  ...data,
+  compatible_character_type: "young_wuxia",
+  created_at: createdAt,
+});
+
+/** 每件物品僅保留可見配件；服飾永遠不含頭臉，特效永遠不會使用臉部保護區。 */
 export const avatarItems: AvatarItem[] = [
-  { id: "avatar-hair-black-topknot", name: "黑色髮髻", type: "hair", rarity: "common", description: "初入江湖的俐落髮髻。", price_coin: 0, asset_url: "/manus-storage/avatar-hair-black-topknot_7e6039ba.png", layer_order: "hair", compatible_character_type: "young_wuxia", unlock_condition: "初始持有", created_at: createdAt },
-  { id: "avatar-outfit-cloth", name: "布衣少俠", type: "outfit", rarity: "common", description: "適合每日修煉的簡潔布衣。", price_coin: 0, asset_url: "/manus-storage/avatar-outfit-cloth_f6f09e54.png", layer_order: "outfit", compatible_character_type: "young_wuxia", unlock_condition: "初始持有", created_at: createdAt },
-  { id: "avatar-outfit-sect", name: "門派弟子袍", type: "outfit", rarity: "rare", description: "帶著門派徽記的修煉長袍。", price_coin: 200, asset_url: "/manus-storage/avatar-outfit-sect_061cea1d.png", layer_order: "outfit", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-outfit-qingyun", name: "青雲俠客服", type: "outfit", rarity: "epic", description: "雲紋隨身，行走江湖更顯從容。", price_coin: 500, asset_url: "/manus-storage/avatar-outfit-qingyun_9d43aac3.png", layer_order: "outfit", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-outfit-redflame", name: "赤焰披風袍", type: "outfit", rarity: "legendary", description: "赤焰映身，象徵傳說級修煉。", price_coin: 1000, asset_url: "/manus-storage/avatar-outfit-redflame_82967987.png", layer_order: "outfit", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-weapon-wood", name: "木劍", type: "weapon", rarity: "common", description: "萬丈高樓，先從木劍起。", price_coin: 0, asset_url: "/manus-storage/avatar-weapon-wood-front_7d6ca50b.png", layer_order: "weapon_front", compatible_character_type: "young_wuxia", unlock_condition: "初始持有", created_at: createdAt },
-  { id: "avatar-weapon-iron", name: "鐵劍", type: "weapon", rarity: "rare", description: "一寸鐵，一寸心。", price_coin: 150, asset_url: "/manus-storage/avatar-weapon-iron-front_b0d3fd0b.png", layer_order: "weapon_front", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-weapon-cloud", name: "雲紋長劍", type: "weapon", rarity: "epic", description: "雲紋劍氣，回應悟性修煉。", price_coin: 400, asset_url: "/manus-storage/avatar-weapon-cloud-front_377229ef.png", layer_order: "weapon_front", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-weapon-dragon", name: "龍淵古劍", type: "weapon", rarity: "legendary", description: "古劍內斂，非有緣人不可持。", price_coin: 900, asset_url: "/manus-storage/avatar-weapon-dragon-front_414282a2.png", layer_order: "weapon_front", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-headband-blue", name: "青布髮帶", type: "head_accessory", rarity: "common", description: "樸實卻不失俐落的髮帶。", price_coin: 0, asset_url: "/manus-storage/avatar-headband-blue_326e942a.png", layer_order: "head_accessory", compatible_character_type: "young_wuxia", unlock_condition: "初始持有", created_at: createdAt },
-  { id: "avatar-head-ornament-sect", name: "門派額飾", type: "head_accessory", rarity: "rare", description: "以門派徽飾見證修煉心志。", price_coin: 180, asset_url: "/manus-storage/avatar-head-ornament-sect_05830add.png", layer_order: "head_accessory", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-head-hat-gold", name: "金絲斗笠", type: "head_accessory", rarity: "epic", description: "金絲收邊，替少俠遮下江湖風霜。", price_coin: 420, asset_url: "/manus-storage/avatar-head-hat-gold_6ecef93a.png", layer_order: "head_accessory", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-back-cape-plain", name: "素色披風", type: "back_accessory", rarity: "rare", description: "風起時，披風亦替少俠作答。", price_coin: 220, asset_url: "/manus-storage/avatar-back-cape-plain_2b575a2c.png", layer_order: "back_accessory", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-back-cape-redflame", name: "赤焰披風", type: "back_accessory", rarity: "epic", description: "赤焰流轉，步入山門亦自成氣勢。", price_coin: 560, asset_url: "/manus-storage/avatar-back-cape-redflame_f7178022.png", layer_order: "back_accessory", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-back-swordcase", name: "背劍匣", type: "back_accessory", rarity: "legendary", description: "收束劍意，也收束持劍之心。", price_coin: 800, asset_url: "/manus-storage/avatar-back-swordcase_a233ee42.png", layer_order: "back_accessory", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-aura-innerglow", name: "內力微光", type: "aura", rarity: "rare", description: "內力流轉，修為在身外凝成微光。", price_coin: 260, asset_url: "/manus-storage/avatar-aura-innerglow_4ea66813.png", layer_order: "aura_effect", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-aura-swordqi", name: "青雲劍氣", type: "aura", rarity: "epic", description: "劍氣迴旋，如青雲護體。", price_coin: 520, asset_url: "/manus-storage/avatar-aura-swordqi_000897bd.png", layer_order: "aura_effect", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
-  { id: "avatar-aura-goldmaster", name: "金色宗師光環", type: "aura", rarity: "legendary", description: "宗師氣機環抱，劍意收放自如。", price_coin: 980, asset_url: "/manus-storage/avatar-aura-goldmaster_290a18d2.png", layer_order: "aura_effect", compatible_character_type: "young_wuxia", unlock_condition: "江湖商鋪", created_at: createdAt },
+  item({ id: "avatar-hair-black-topknot", name: "黑色髮髻", type: "hair", rarity: "common", description: "固定少俠髮髻已繪入基礎模板，不重複疊加。", price_coin: 0, asset_url: avatarAsset.hairFront, layer_order: "hair_front", safe_zones: ["hair"], asset_layers: {}, unlock_condition: "初始持有" }),
+  item({ id: "avatar-outfit-cloth", name: "布衣少俠", type: "outfit", rarity: "common", description: "預設布衣已繪入基礎模板，不重複覆蓋頭臉與身體。", price_coin: 0, asset_url: avatarAsset.outfitCloth, layer_order: "outfit", safe_zones: ["outfit"], asset_layers: {}, unlock_condition: "初始持有" }),
+  item({ id: "avatar-outfit-sect", name: "門派弟子袍", type: "outfit", rarity: "rare", description: "玉青門派長袍，領口止於頸部下方。", price_coin: 200, asset_url: avatarAsset.outfitSect, layer_order: "outfit", safe_zones: ["outfit"], asset_layers: { outfit: avatarAsset.outfitSect }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-outfit-qingyun", name: "青雲俠客服", type: "outfit", rarity: "epic", description: "青藍雲紋武服，只覆蓋身體安全區。", price_coin: 500, asset_url: avatarAsset.outfitQingyun, layer_order: "outfit", safe_zones: ["outfit"], asset_layers: { outfit: avatarAsset.outfitQingyun }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-outfit-redflame", name: "赤焰披風袍", type: "outfit", rarity: "legendary", description: "朱紅傳說武袍，絕不進入臉部範圍。", price_coin: 1000, asset_url: avatarAsset.outfitRedflame, layer_order: "outfit", safe_zones: ["outfit"], asset_layers: { outfit: avatarAsset.outfitRedflame }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-weapon-wood", name: "木劍", type: "weapon", rarity: "common", description: "固定於右手外側的木製練習劍。", price_coin: 0, asset_url: avatarAsset.weaponWood, layer_order: "weapon_front", safe_zones: ["hand_weapon"], asset_layers: { weapon_front: avatarAsset.weaponWood }, unlock_condition: "初始持有" }),
+  item({ id: "avatar-weapon-iron", name: "鐵劍", type: "weapon", rarity: "rare", description: "右手安全區內的實戰鐵劍。", price_coin: 150, asset_url: avatarAsset.weaponIron, layer_order: "weapon_front", safe_zones: ["hand_weapon"], asset_layers: { weapon_front: avatarAsset.weaponIron }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-weapon-cloud", name: "雲紋長劍", type: "weapon", rarity: "epic", description: "雲紋長劍維持右手側的人體對位。", price_coin: 400, asset_url: avatarAsset.weaponCloud, layer_order: "weapon_front", safe_zones: ["hand_weapon"], asset_layers: { weapon_front: avatarAsset.weaponCloud }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-weapon-dragon", name: "龍淵古劍", type: "weapon", rarity: "legendary", description: "古劍只在右手外側呈現，避開頭臉與胸口。", price_coin: 900, asset_url: avatarAsset.weaponDragon, layer_order: "weapon_front", safe_zones: ["hand_weapon"], asset_layers: { weapon_front: avatarAsset.weaponDragon }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-headband-blue", name: "青布髮帶", type: "head_accessory", rarity: "common", description: "只貼合髮際，保留完整五官。", price_coin: 0, asset_url: avatarAsset.headbandBlue, layer_order: "head_accessory", safe_zones: ["head_accessory"], asset_layers: { head_accessory: avatarAsset.headbandBlue }, unlock_condition: "初始持有" }),
+  item({ id: "avatar-head-ornament-sect", name: "門派額飾", type: "head_accessory", rarity: "rare", description: "小型額飾固定於額頭上緣。", price_coin: 180, asset_url: avatarAsset.headOrnamentSect, layer_order: "head_accessory", safe_zones: ["head_accessory"], asset_layers: { head_accessory: avatarAsset.headOrnamentSect }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-head-hat-gold", name: "金絲斗笠", type: "head_accessory", rarity: "epic", description: "金絲斗笠框在頭頂，不覆蓋雙眼。", price_coin: 420, asset_url: avatarAsset.headHatGold, layer_order: "head_accessory", safe_zones: ["head_accessory"], asset_layers: { head_accessory: avatarAsset.headHatGold }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-back-cape-plain", name: "素色披風", type: "back_accessory", rarity: "rare", description: "披風只位於肩背後方。", price_coin: 220, asset_url: avatarAsset.capePlain, layer_order: "back_accessory", safe_zones: ["back"], asset_layers: { back_accessory: avatarAsset.capePlain }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-back-cape-redflame", name: "赤焰披風", type: "back_accessory", rarity: "epic", description: "赤焰披風停留於身體後方。", price_coin: 560, asset_url: avatarAsset.capeRedflame, layer_order: "back_accessory", safe_zones: ["back"], asset_layers: { back_accessory: avatarAsset.capeRedflame }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-back-swordcase", name: "背劍匣", type: "back_accessory", rarity: "legendary", description: "背劍匣固定於右肩背側。", price_coin: 800, asset_url: avatarAsset.swordcase, layer_order: "back_accessory", safe_zones: ["back"], asset_layers: { back_accessory: avatarAsset.swordcase }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-aura-innerglow", name: "內力微光", type: "aura", rarity: "rare", description: "低透明內力微光環繞足邊，不遮表情。", price_coin: 260, asset_url: avatarAsset.innerGlowBack, layer_order: "aura_back", safe_zones: ["aura"], asset_layers: { aura_back: avatarAsset.innerGlowBack, aura_front: avatarAsset.auraFrontClear }, unlock_condition: "初始持有" }),
+  item({ id: "avatar-aura-swordqi", name: "青雲劍氣", type: "aura", rarity: "epic", description: "青雲劍氣置於外圍與足邊。", price_coin: 520, asset_url: avatarAsset.swordQiBack, layer_order: "aura_back", safe_zones: ["aura"], asset_layers: { aura_back: avatarAsset.swordQiBack, aura_front: avatarAsset.auraFrontClear }, unlock_condition: "江湖商鋪" }),
+  item({ id: "avatar-aura-goldmaster", name: "金色宗師光環", type: "aura", rarity: "legendary", description: "宗師光環避開臉部保護區。", price_coin: 980, asset_url: avatarAsset.goldMasterBack, layer_order: "aura_back", safe_zones: ["aura"], asset_layers: { aura_back: avatarAsset.goldMasterBack, aura_front: avatarAsset.auraFrontClear }, unlock_condition: "江湖商鋪" }),
 ];
 
 export const defaultAvatarEquipment: AvatarEquipment = { outfit: "avatar-outfit-cloth", weapon: "avatar-weapon-wood", hair: "avatar-hair-black-topknot", head_accessory: null, back_accessory: null, aura: null };
@@ -63,41 +102,44 @@ export const avatarRarityLabel: Record<AvatarRarity, string> = { common: "常見
 export const avatarRarityColor: Record<AvatarRarity, string> = { common: "#72918A", rare: "#2E8B91", epic: "#7661B5", legendary: "#C94D42" };
 export const avatarRarityRank: Record<AvatarRarity, number> = { common: 1, rare: 2, epic: 3, legendary: 4 };
 export const avatarRarityEffect: Record<AvatarRarity, { glowColor: string; ringColor: string; sealColor: string; sealTextColor: string; sealLabel: string; flashStart: number; flashEnd: number; flashPeakOpacity: number; impactDuration: number; settleDuration: number }> = {
-  common: { glowColor: "rgba(173, 214, 186, 0.58)", ringColor: "#D8F2DE", sealColor: "#5F8C73", sealTextColor: "#F4FFF1", sealLabel: "素裝", flashStart: 0.74, flashEnd: 1.08, flashPeakOpacity: 0.52, impactDuration: 105, settleDuration: 205 },
-  rare: { glowColor: "rgba(93, 205, 203, 0.62)", ringColor: "#A9FFF5", sealColor: "#277C84", sealTextColor: "#E6FFFB", sealLabel: "靈裝", flashStart: 0.72, flashEnd: 1.15, flashPeakOpacity: 0.64, impactDuration: 120, settleDuration: 240 },
-  epic: { glowColor: "rgba(158, 126, 222, 0.68)", ringColor: "#E5D2FF", sealColor: "#6F58A8", sealTextColor: "#F9F0FF", sealLabel: "真訣", flashStart: 0.68, flashEnd: 1.25, flashPeakOpacity: 0.74, impactDuration: 135, settleDuration: 280 },
-  legendary: { glowColor: "rgba(247, 191, 79, 0.76)", ringColor: "#FFF0A7", sealColor: "#C27828", sealTextColor: "#FFF8D9", sealLabel: "傳說", flashStart: 0.62, flashEnd: 1.38, flashPeakOpacity: 0.88, impactDuration: 155, settleDuration: 330 },
+  common: { glowColor: "rgba(173, 214, 186, 0.34)", ringColor: "#D8F2DE", sealColor: "#5F8C73", sealTextColor: "#F4FFF1", sealLabel: "素裝", flashStart: 0.74, flashEnd: 1.08, flashPeakOpacity: 0.34, impactDuration: 105, settleDuration: 205 },
+  rare: { glowColor: "rgba(93, 205, 203, 0.42)", ringColor: "#A9FFF5", sealColor: "#277C84", sealTextColor: "#E6FFFB", sealLabel: "靈裝", flashStart: 0.72, flashEnd: 1.15, flashPeakOpacity: 0.42, impactDuration: 120, settleDuration: 240 },
+  epic: { glowColor: "rgba(158, 126, 222, 0.48)", ringColor: "#E5D2FF", sealColor: "#6F58A8", sealTextColor: "#F9F0FF", sealLabel: "真訣", flashStart: 0.68, flashEnd: 1.25, flashPeakOpacity: 0.48, impactDuration: 135, settleDuration: 280 },
+  legendary: { glowColor: "rgba(247, 191, 79, 0.52)", ringColor: "#FFF0A7", sealColor: "#C27828", sealTextColor: "#FFF8D9", sealLabel: "傳說", flashStart: 0.62, flashEnd: 1.38, flashPeakOpacity: 0.52, impactDuration: 155, settleDuration: 330 },
 };
-export const avatarItemById = (id: string | null | undefined) => avatarItems.find((item) => item.id === id);
 
-/** 當一次操作改變多個槽位時，以最高稀有度作為換裝特效等級；卸下時也會保留原物品的特效層級。 */
+export const avatarItemById = (id: string | null | undefined) => avatarItems.find((entry) => entry.id === id);
+
+/** 可在測試與開發期阻擋把服飾錯掛到頭部，或讓特效宣告為臉部素材等資料錯誤。 */
+export function avatarItemSafetyViolations(entry: AvatarItem) {
+  return Object.entries(entry.asset_layers ?? {}).flatMap(([layer]) => {
+    const typedLayer = layer as AvatarLayerSlot;
+    return avatarLayerHasValidSafeZone(typedLayer, entry.safe_zones) ? [] : [`${entry.id}:${typedLayer} 不符合 ${entry.safe_zones.join("/")} 安全區域`];
+  });
+}
+
 export function avatarRarityForEquipmentChange(previous: AvatarEquipment, next: AvatarEquipment): AvatarRarity {
   const candidates = (Object.keys(next) as AvatarSlot[]).flatMap((slot) => previous[slot] === next[slot] ? [] : [previous[slot], next[slot]]).map((id) => avatarItemById(id)?.rarity).filter((rarity): rarity is AvatarRarity => Boolean(rarity));
   return candidates.sort((left, right) => avatarRarityRank[right] - avatarRarityRank[left])[0] ?? "common";
 }
 
-export type AvatarLayer = { slot: AvatarLayerSlot; assetUrl: string };
+export type AvatarLayer = { slot: AvatarLayerSlot; assetUrl: string; depth: number };
 export function avatarLayersFor(equipment: AvatarEquipment): AvatarLayer[] {
-  const itemFor = (slot: AvatarSlot) => avatarItemById(equipment[slot]);
-  const assetFor = (slot: AvatarSlot, layer: AvatarLayerSlot) => {
-    const item = itemFor(slot);
-    if (!item) return undefined;
-    // 初始角色已將布衣與髮髻繪入基礎身體，避免重複套圖造成深色底圖或輪廓重影。
-    if (item.id === "avatar-hair-black-topknot" || item.id === "avatar-outfit-cloth") return undefined;
-    return item.asset_layers?.[layer] ?? (item.layer_order === layer ? item.asset_url : undefined);
+  const selected = (slot: AvatarSlot) => avatarItemById(equipment[slot]);
+  const from = (slot: AvatarSlot, layer: AvatarLayerSlot) => selected(slot)?.asset_layers?.[layer];
+  const layers: Partial<Record<AvatarLayerSlot, string>> = {
+    aura_back: from("aura", "aura_back"),
+    back_accessory: from("back_accessory", "back_accessory"),
+    base_body: avatarBaseBodyAsset,
+    outfit: from("outfit", "outfit"),
+    hair_back: from("hair", "hair_back"),
+    weapon_back: from("weapon", "weapon_back"),
+    weapon_front: from("weapon", "weapon_front"),
+    hair_front: from("hair", "hair_front"),
+    head_accessory: from("head_accessory", "head_accessory"),
+    aura_front: from("aura", "aura_front"),
   };
-  const layers: AvatarLayer[] = [{ slot: "base_body", assetUrl: avatarBaseBodyAsset }];
-  // 保持資料序列與裝備規格一致；視覺上的披風、光效前後關係由 CharacterAvatar 的 zIndex 明確控制。
-  ([
-    ["hair", "hair"],
-    ["outfit", "outfit"],
-    ["back_accessory", "back_accessory"],
-    ["weapon", "weapon_back"],
-    ["weapon", "weapon_front"],
-    ["head_accessory", "head_accessory"],
-    ["aura", "aura_effect"],
-  ] as const).forEach(([slot, layer]) => { const assetUrl = assetFor(slot, layer); if (assetUrl) layers.push({ slot: layer, assetUrl }); });
-  return layers;
+  return avatarLayerOrder.flatMap((slot) => layers[slot] ? [{ slot, assetUrl: layers[slot]!, depth: avatarLayerDepth[slot] }] : []);
 }
 
 export function profileFromEquipment(equipment: AvatarEquipment): UserProfile {
