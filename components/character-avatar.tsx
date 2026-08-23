@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { avatarLayersFor, avatarRarityEffect, avatarRarityForEquipmentChange, defaultAvatarEquipment, type AvatarEquipment, type AvatarLayerSlot } from "@/lib/avatar-system";
+import { avatarImageSource } from "@/components/avatar-assets";
 
 type CharacterAvatarProps = { equipment?: AvatarEquipment; height?: number; style?: StyleProp<ViewStyle>; accessibilityLabel?: string; animateChanges?: boolean };
 const layerDepth: Record<AvatarLayerSlot, number> = { aura_effect: 0, back_accessory: 1, base_body: 2, hair: 3, outfit: 4, weapon_back: 5, weapon_front: 6, head_accessory: 7 };
@@ -42,7 +43,7 @@ export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 2
   const flashScale = qiFlash.interpolate({ inputRange: [0, 1], outputRange: [effect.flashStart, effect.flashEnd] });
   const flashOpacity = qiFlash.interpolate({ inputRange: [0, 1], outputRange: [0, effect.flashPeakOpacity] });
   const ringOpacity = qiFlash.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0, effect.flashPeakOpacity, 0] });
-  return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}><Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} /><Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />{layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={{ uri: layer.assetUrl }} resizeMode="contain" style={[styles.layer, { zIndex: layerDepth[layer.slot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}</View>;
+  return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}><Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} /><Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />{layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={avatarImageSource(layer.assetUrl)} resizeMode="contain" style={[styles.layer, { zIndex: layerDepth[layer.slot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}</View>;
 }
 
 const styles = StyleSheet.create({

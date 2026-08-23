@@ -82,6 +82,8 @@ export function avatarLayersFor(equipment: AvatarEquipment): AvatarLayer[] {
   const assetFor = (slot: AvatarSlot, layer: AvatarLayerSlot) => {
     const item = itemFor(slot);
     if (!item) return undefined;
+    // 初始角色已將布衣與髮髻繪入基礎身體，避免重複套圖造成深色底圖或輪廓重影。
+    if (item.id === "avatar-hair-black-topknot" || item.id === "avatar-outfit-cloth") return undefined;
     return item.asset_layers?.[layer] ?? (item.layer_order === layer ? item.asset_url : undefined);
   };
   const layers: AvatarLayer[] = [{ slot: "base_body", assetUrl: avatarBaseBodyAsset }];

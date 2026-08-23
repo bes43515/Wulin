@@ -9,6 +9,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { customHeroBanner } from "@/lib/custom-assets";
 import { levelTitle, typeLabel, useGame, type TaskType } from "@/lib/game-store";
 import { avatarBrandMark, avatarItemById, avatarItems, avatarRarityColor, avatarRarityLabel, avatarSlotLabel, defaultAvatarEquipment, type AvatarEquipment, type AvatarSlot } from "@/lib/avatar-system";
+import { avatarImageSource } from "@/components/avatar-assets";
 
 const wardrobeSlots: AvatarSlot[] = ["outfit", "weapon", "head_accessory", "back_accessory", "aura"];
 const summarySlots: AvatarSlot[] = ["outfit", "weapon", "head_accessory", "back_accessory", "aura"];
@@ -33,7 +34,7 @@ export default function ProfileScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
             <View style={styles.identityRow}>
-              <Image source={{ uri: avatarBrandMark }} style={styles.brandMark} resizeMode="contain" />
+              <Image source={avatarImageSource(avatarBrandMark)} style={styles.brandMark} resizeMode="contain" />
               <View>
                 <Text style={styles.kicker}>江湖修煉手札</Text>
                 <Text style={styles.heading}>少俠衣櫥</Text>
@@ -75,7 +76,7 @@ export default function ProfileScreen() {
             <View style={styles.equipmentGrid}>
               {equippedSummary.map(({ slot, item }) => (
                 <Pressable key={slot} onPress={() => openWardrobe(slot)} style={({ pressed }) => [styles.equipmentCell, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`前往${avatarSlotLabel[slot]}換裝`}>
-                  {item ? <Image source={{ uri: item.asset_url }} style={styles.equipmentThumb} resizeMode="contain" /> : <View style={styles.emptyThumb}><Text style={styles.emptyThumbText}>—</Text></View>}
+                  {item ? <Image source={avatarImageSource(item.asset_url)} style={styles.equipmentThumb} resizeMode="contain" /> : <View style={styles.emptyThumb}><Text style={styles.emptyThumbText}>—</Text></View>}
                   <View style={styles.equipmentCopy}>
                     <Text style={styles.equipmentSlot}>{avatarSlotLabel[slot]}</Text>
                     <Text style={styles.equipmentName} numberOfLines={1}>{item?.name ?? "未裝備"}</Text>
@@ -154,7 +155,7 @@ function WardrobeModal({ visible, initialSlot, onClose }: { visible: boolean; in
               const selected = preview[slot] === item.id;
               return (
                 <View key={item.id} style={[styles.itemRow, selected && styles.itemRowSelected, !owned && styles.itemRowLocked]}>
-                  <Image source={{ uri: item.asset_url }} style={styles.itemThumb} resizeMode="contain" />
+                  <Image source={avatarImageSource(item.asset_url)} style={styles.itemThumb} resizeMode="contain" />
                   <View style={[styles.raritySeal, { backgroundColor: avatarRarityColor[item.rarity] }]}><Text style={styles.raritySealText}>{avatarRarityLabel[item.rarity].slice(0, 1)}</Text></View>
                   <View style={styles.itemCopy}><Text style={styles.itemName}>{item.name}</Text><Text style={styles.itemDescription} numberOfLines={1}>{item.description}</Text><Text style={[styles.itemStatus, { color: avatarRarityColor[item.rarity] }]}>{equipped ? "已裝備" : owned ? "已擁有" : "未擁有"}</Text></View>
                   <Pressable onPress={() => setPreview((current) => ({ ...current, [slot]: item.id }))} style={({ pressed }) => [styles.tryButton, selected && styles.tryButtonSelected, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`試穿${item.name}`}><Text style={[styles.tryButtonText, selected && styles.tryButtonTextSelected]}>{selected ? "試穿中" : "試穿"}</Text></Pressable>
