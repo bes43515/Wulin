@@ -1,10 +1,11 @@
 import type { ImageSourcePropType } from "react-native";
-import { avatarAsset, avatarBaseBodyAsset, avatarBrandMark } from "@/lib/avatar-system";
+import { avatarAsset, avatarBaseBodyAsset, avatarBrandMark, avatarSkeletonBaseBodyAsset } from "@/lib/avatar-system";
 
 /** 由本機隨 App 封裝的 Q 版透明素材表；避免 Web Preview 或原生 App 依賴失效的臨時網址。 */
 const localAvatarAssets: Record<string, ImageSourcePropType> = {
   [avatarBrandMark]: require("../assets/images/avatar/mountain-gate-mark.png"),
   [avatarBaseBodyAsset]: require("../assets/images/avatar-q/base-body.png"),
+  [avatarSkeletonBaseBodyAsset]: require("../assets/images/avatar-q/skeleton-base-body.png"),
   [avatarAsset.hairFront]: require("../assets/images/avatar-q/hair-front.png"),
   [avatarAsset.outfitCloth]: require("../assets/images/avatar-q/outfit-cloth.png"),
   [avatarAsset.outfitSect]: require("../assets/images/avatar-q/outfit-sect.png"),

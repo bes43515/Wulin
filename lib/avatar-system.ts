@@ -2,6 +2,7 @@ import {
   avatarLayerDepth,
   avatarLayerHasValidSafeZone,
   avatarLayerOrder,
+  avatarLayerBone,
   type AvatarLayerSlot,
   type AvatarSafeZone,
 } from "./avatar-template";
@@ -13,6 +14,7 @@ export type AvatarEquipment = Record<AvatarSlot, string | null>;
 
 /** 素材鍵與本機檔案一一對應；不可再使用未保證可存取的暫時網址。 */
 export const avatarAsset = {
+  skeletonBaseBody: "avatar-q://skeleton-base-body",
   baseBody: "avatar-q://base-body",
   hairFront: "avatar-q://hair-front",
   outfitCloth: "avatar-q://outfit-cloth",
@@ -65,6 +67,7 @@ export type UserProfile = {
 };
 
 export const avatarBaseBodyAsset = avatarAsset.baseBody;
+export const avatarSkeletonBaseBodyAsset = avatarAsset.skeletonBaseBody;
 export const avatarBrandMark = "/manus-storage/wulin-mountain-gate-mark_00e65824.png";
 const createdAt = "2026-08-24T00:00:00.000Z";
 
@@ -123,14 +126,14 @@ export function avatarRarityForEquipmentChange(previous: AvatarEquipment, next: 
   return candidates.sort((left, right) => avatarRarityRank[right] - avatarRarityRank[left])[0] ?? "common";
 }
 
-export type AvatarLayer = { slot: AvatarLayerSlot; assetUrl: string; depth: number };
+export type AvatarLayer = { slot: AvatarLayerSlot; assetUrl: string; depth: number; bone: string; attachment: string };
 export function avatarLayersFor(equipment: AvatarEquipment): AvatarLayer[] {
   const selected = (slot: AvatarSlot) => avatarItemById(equipment[slot]);
   const from = (slot: AvatarSlot, layer: AvatarLayerSlot) => selected(slot)?.asset_layers?.[layer];
   const layers: Partial<Record<AvatarLayerSlot, string>> = {
     aura_back: from("aura", "aura_back"),
     back_accessory: from("back_accessory", "back_accessory"),
-    base_body: avatarBaseBodyAsset,
+    base_body: avatarSkeletonBaseBodyAsset,
     outfit: from("outfit", "outfit"),
     hair_back: from("hair", "hair_back"),
     weapon_back: from("weapon", "weapon_back"),
@@ -139,9 +142,9 @@ export function avatarLayersFor(equipment: AvatarEquipment): AvatarLayer[] {
     head_accessory: from("head_accessory", "head_accessory"),
     aura_front: from("aura", "aura_front"),
   };
-  return avatarLayerOrder.flatMap((slot) => layers[slot] ? [{ slot, assetUrl: layers[slot]!, depth: avatarLayerDepth[slot] }] : []);
+  return avatarLayerOrder.flatMap((slot) => layers[slot] ? [{ slot, assetUrl: layers[slot]!, depth: avatarLayerDepth[slot], bone: avatarLayerBone[slot].bone, attachment: avatarLayerBone[slot].attachment }] : []);
 }
 
 export function profileFromEquipment(equipment: AvatarEquipment): UserProfile {
-  return { user_id: "local-jianghu-player", base_body_asset_url: avatarBaseBodyAsset, current_outfit_id: equipment.outfit, current_weapon_id: equipment.weapon, current_hair_id: equipment.hair, current_head_accessory_id: equipment.head_accessory, current_back_accessory_id: equipment.back_accessory, current_aura_id: equipment.aura };
+  return { user_id: "local-jianghu-player", base_body_asset_url: avatarSkeletonBaseBodyAsset, current_outfit_id: equipment.outfit, current_weapon_id: equipment.weapon, current_hair_id: equipment.hair, current_head_accessory_id: equipment.head_accessory, current_back_accessory_id: equipment.back_accessory, current_aura_id: equipment.aura };
 }

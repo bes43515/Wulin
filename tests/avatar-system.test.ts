@@ -61,3 +61,24 @@ describe("Q 版 avatar-system", () => {
     expect(avatarItemById("avatar-head-hat-gold")?.safe_zones).toEqual(["head_accessory"]);
   });
 });
+
+
+import { avatarAttachmentIsInSafeZone, avatarLayerBone, avatarSkeletonBones, avatarSkeletonHasAllRequiredBones } from "../lib/avatar-template";
+
+describe("骨架模型契約", () => {
+  it("provides the required body bones and stable parent relationships", () => {
+    expect(avatarSkeletonHasAllRequiredBones()).toBe(true);
+    expect(avatarSkeletonBones.find((bone) => bone.name === "head")?.parent).toBe("neck");
+    expect(avatarSkeletonBones.find((bone) => bone.name === "hand_right")?.parent).toBe("shoulder_right");
+  });
+
+  it("assigns every render layer to a named bone attachment", () => {
+    for (const slot of avatarLayerOrder) {
+      expect(avatarLayerBone[slot].bone).toBeTruthy();
+      expect(avatarLayerBone[slot].attachment).toBeTruthy();
+    }
+    expect(avatarAttachmentIsInSafeZone("head_accessory", "head_accessory")).toBe(true);
+    expect(avatarAttachmentIsInSafeZone("hand_right", "hand_weapon")).toBe(true);
+    expect(avatarAttachmentIsInSafeZone("foot_aura", "aura")).toBe(true);
+  });
+});

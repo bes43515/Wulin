@@ -42,7 +42,7 @@ export function CharacterAvatar({ equipment = defaultAvatarEquipment, height = 2
   return <View accessibilityRole="image" accessibilityLabel={accessibilityLabel} pointerEvents="none" style={[styles.avatar, { width, height }, style]}>
     <Animated.View style={[styles.qiFlash, { backgroundColor: effect.glowColor, opacity: flashOpacity, transform: [{ scale: flashScale }] }]} />
     <Animated.View style={[styles.qiRing, { borderColor: effect.ringColor, opacity: ringOpacity, transform: [{ scale: flashScale }] }]} />
-    {layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.assetUrl}`} source={avatarImageSource(layer.assetUrl)} resizeMode="contain" style={[styles.layer, { zIndex: avatarLayerDepth[layer.slot as AvatarLayerSlot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}
+    {layers.map((layer) => <Animated.Image key={`${layer.slot}-${layer.bone}-${layer.attachment}-${layer.assetUrl}`} accessibilityLabel={`${layer.slot}，掛載於${layer.bone}骨節`} source={avatarImageSource(layer.assetUrl)} resizeMode="contain" style={[styles.layer, { zIndex: avatarLayerDepth[layer.slot as AvatarLayerSlot], opacity: transition, transform: [{ scale: avatarScale }] }]} />)}
   </View>;
 }
 
